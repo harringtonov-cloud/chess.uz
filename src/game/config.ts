@@ -6,9 +6,34 @@ export type ThemeId = 'lichess' | 'green' | 'blue' | 'purple' | 'grey' | 'royal'
 
 export type ClockPresetId = 'none' | 'bullet1' | 'bullet2' | 'blitz3' | 'blitz5' | 'rapid10' | 'rapid15'
 
+export type VariantId = 
+  | 'standard' 
+  | 'chess960' 
+  | 'crazyhouse' 
+  | 'threeCheck' 
+  | 'fiveCheck'
+  | 'atomic' 
+  | 'antichess' 
+  | 'kingOfTheHill' 
+  | 'horde' 
+  | 'racingKings'
+
 export type AiLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
 
 export type PlayMode = 'ai' | 'local'
+
+export const VARIANTS: Record<VariantId, { label: string; lichessKey: string; desc: string }> = {
+  standard: { label: 'Стандарт', lichessKey: 'standard', desc: 'Классические шахматы' },
+  chess960: { label: 'Шах960', lichessKey: 'chess960', desc: 'Фишер рэндом, 960 позиций' },
+  crazyhouse: { label: 'Крейзихаус', lichessKey: 'crazyhouse', desc: 'Съеденные фигуры можно ставить' },
+  threeCheck: { label: '3 шаха', lichessKey: 'threeCheck', desc: 'Победа после 3 шахов королю' },
+  fiveCheck: { label: '5 шахов', lichessKey: 'fiveCheck', desc: 'Победа после 5 шахов' },
+  atomic: { label: 'Атомик', lichessKey: 'atomic', desc: 'Взрывы вокруг взятия' },
+  antichess: { label: 'Поддавки', lichessKey: 'antichess', desc: 'Кто первый съел все фигуры - победил' },
+  kingOfTheHill: { label: 'Царь горы', lichessKey: 'kingOfTheHill', desc: 'Приведи короля в центр - победа' },
+  horde: { label: 'Орда', lichessKey: 'horde', desc: 'Пешки против фигур' },
+  racingKings: { label: 'Гонка королей', lichessKey: 'racingKings', desc: 'Кто первым доведет короля до 8-й линии' },
+}
 
 export const THEMES: Record<
   ThemeId,
@@ -22,10 +47,8 @@ export const THEMES: Record<
     moveTo: string
     last: string
     check: string
-    /** Подсветка пре-мува. */
     premove: string
     boardBorder: string
-    /** Плоская доска без неонового свечения (как на Lichess). */
     flat?: boolean
   }
 > = {
@@ -150,7 +173,6 @@ export const CLOCK_PRESETS: Record<ClockPresetId, { label: string; tc: TimeContr
   rapid15: { label: 'Rapid 15+10', tc: timeControl(15, 10) },
 }
 
-/** Уровни ИИ 1–12: глубина поиска, бюджет времени на ход (мс), шум оценки (ошибки). elo — ориентир. */
 export const AI_LEVELS: Record<AiLevel, { label: string; depth: number; ms: number; noise: number; elo: number }> = {
   1: { label: 'Уровень 1', depth: 1, ms: 300, noise: 400, elo: 400 },
   2: { label: 'Уровень 2', depth: 1, ms: 300, noise: 250, elo: 600 },
