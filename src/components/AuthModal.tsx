@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { authErrorText, loginWithEmail, loginWithGoogle, registerWithEmail, resetPassword } from '../data/auth.ts'
 
 type Props = {
@@ -31,7 +31,7 @@ export function AuthModal({ onClose }: Props) {
     }
   }
 
-  const submit = async (e: React.FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     const mail = email.trim()
     if (!mail || !password) {

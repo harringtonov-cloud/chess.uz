@@ -20,13 +20,13 @@ import {
 } from '../room.ts'
 
 function playing(over: Partial<Room> = {}): Room {
-  return { ...newRoom({ tcId: 'blitz5', baseMs: 300_000, incMs: 2000, color: 'w', uid: 'A', name: 'A' }), black: 'B', blackName: 'B', status: 'playing', ...over }
+  return { ...newRoom({ tcId: 'blitz5', baseMs: 300_000, incMs: 2000, color: 'w', uid: 'A', name: 'A', isPublic: false }), black: 'B', blackName: 'B', status: 'playing', ...over }
 }
 
 function apply(room: Room, uci: string, elapsed = 0): Room {
   const color = turnOf(room)
   const plan = planMove(room, uci, color, elapsed)
-  assert.ok(plan.ok, plan.ok ? '' : plan.error)
+  if (!plan.ok) throw new Error(plan.error)
   return { ...room, ...plan.patch } as Room
 }
 
