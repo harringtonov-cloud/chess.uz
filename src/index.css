@@ -378,3 +378,28 @@ textarea { resize: vertical; width: 100%; background: #0b1224; border: 1px solid
   .top-actions select { max-width: 90px; }
   .user-chip { max-width: 80px; }
 }
+
+/* Настройки */
+.settings-modal { display: flex; flex-direction: column; gap: 14px; width: min(94vw, 380px); text-align: left; max-height: 90dvh; overflow-y: auto; }
+.settings-modal h3 { text-align: center; }
+.set-block { display: flex; flex-direction: column; gap: 8px; }
+.set-title { color: #facc15; font-size: 0.9rem; }
+.set-hint { color: #8b9bb8; font-size: 0.8rem; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+.swatch {
+  width: 44px; height: 44px; padding: 0; border-radius: 8px; overflow: hidden;
+  display: grid; grid-template-columns: 1fr 1fr; border: 2px solid transparent; cursor: pointer;
+}
+.swatch.on { border-color: #22d3ee; box-shadow: 0 0 10px #22d3ee88; }
+.piece-sets { display: flex; flex-wrap: wrap; gap: 8px; }
+.piece-set {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 0; width: 96px; padding: 6px;
+  background: #0d1224; border: 2px solid #22d3ee33; border-radius: 10px; cursor: pointer; color: #e8eefc;
+}
+.piece-set.on { border-color: #22d3ee; }
+.piece-set img { width: 100%; background: #b58863; }
+.piece-set img:first-child { background: #f0d9b5; }
+.piece-set small { grid-column: 1 / -1; margin-top: 4px; font-size: 0.72rem; text-align: center; }
+.set-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+.set-toggle input { width: 18px; height: 18px; accent-color: #22d3ee; }
+.set-actions { display: flex; gap: 8px; justify-content: space-between; }
