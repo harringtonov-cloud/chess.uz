@@ -1,3 +1,6 @@
+import { VARIANTS, type VariantId } from './game/config'
+//...
+const [variant, setVariant] = useState<VariantId>('standard')
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ChessClock,
