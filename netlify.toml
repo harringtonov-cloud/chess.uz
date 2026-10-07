@@ -1,0 +1,19 @@
+# Деплой на Netlify: статический сайт (Vite + React), собирается на стороне Netlify.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# Одностраничное приложение: любой путь отдаёт index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Долгое кеширование собранных файлов (имена содержат хеш)
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
