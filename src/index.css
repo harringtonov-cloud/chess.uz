@@ -403,3 +403,9 @@ textarea { resize: vertical; width: 100%; background: #0b1224; border: 1px solid
 .set-toggle { display: flex; align-items: center; gap: 10px; cursor: pointer; }
 .set-toggle input { width: 18px; height: 18px; accent-color: #22d3ee; }
 .set-actions { display: flex; gap: 8px; justify-content: space-between; }
+
+/* Онлайн */
+.link-box {
+  width: 100%; background: #0d1224; border: 1px solid #22d3ee55; border-radius: 10px;
+  padding: 10px 12px; color: #e8eefc; font-size: 0.95rem;
+}
