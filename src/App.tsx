@@ -34,14 +34,12 @@ import { loadHistory, saveGame, type SavedGame } from './data/games'
 import { logout, watchUser, type AuthUser } from './data/auth'
 import { AuthModal } from './components/AuthModal'
 import { SettingsModal } from './components/SettingsModal'
-import { OnlineGame } from './components/OnlineGame'
-import { createRoom, quickMatch } from './data/online'
 import { loadSettings, saveSettings, type Settings } from './game/settings'
 import { probeFileSet } from './chess-ui/pieces'
 import { STARTER_PUZZLES } from './game/puzzles'
 import { loadSounds, playGameBgm, playLobbyBgm, sfx, stopBgm, toggleMute } from './game/sound'
 
-type Screen = 'lobby' | 'play' | 'puzzles' | 'analysis' | 'result' | 'online'
+type Screen = 'lobby' | 'play' | 'puzzles' | 'analysis' | 'result'
 
 type ResultInfo = {
   title: string
@@ -177,55 +175,6 @@ export default function App() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authOpen, setAuthOpen] = useState(false)
   useEffect(() => watchUser(setUser), [])
-
-  // Онлайн
-  const [onlineRoomId, setOnlineRoomId] = useState<string | null>(null)
-  const [onlinePreset, setOnlinePreset] = useState<ClockPresetId>('blitz5')
-  const [onlineColor, setOnlineColor] = useState<'w' | 'b' | 'random'>('random')
-  const [onlineBusy, setOnlineBusy] = useState(false)
-  const [onlineError, setOnlineError] = useState('')
-  const openOnlineRoom = (id: string) => {
-    setOnlineRoomId(id)
-    setScreen('online')
-    window.history.replaceState(null, '', `/?room=${id}`)
-  }
-  const exitOnline = () => {
-    setOnlineRoomId(null)
-    setScreen('lobby')
-    window.history.replaceState(null, '', '/')
-  }
-  const startOnline = async (kind: 'quick' | 'private') => {
-    sfx('click')
-    setOnlineBusy(true)
-    setOnlineError('')
-    try {
-      const tc = CLOCK_PRESETS[onlinePreset].tc
-      const base = { tcId: onlinePreset, baseMs: tc.initialMs, incMs: tc.incrementMs }
-      const id =
-        kind === 'quick'
-          ? await quickMatch(base)
-          : await createRoom({ ...base, color: onlineColor, isPublic: false })
-      openOnlineRoom(id)
-    } catch {
-      setOnlineError('Не удалось начать онлайн-партию. Проверьте вход в Firebase и правила Firestore.')
-    } finally {
-      setOnlineBusy(false)
-    }
-  }
-  // Ссылка вида /?room=ID открывает партию сразу
-  useEffect(() => {
-    const id = new URLSearchParams(window.location.search).get('room')
-    if (id && /^[a-z0-9]{4,32}$/i.test(id)) {
-      setOnlineRoomId(id)
-      setScreen('online')
-    }
-  }, [])
-  useEffect(() => {
-    if (screen !== 'online' && onlineRoomId) {
-      setOnlineRoomId(null)
-      window.history.replaceState(null, '', '/')
-    }
-  }, [screen, onlineRoomId])
   useEffect(() => {
     if (screen !== 'lobby') return
     loadHistory(8)
@@ -240,7 +189,7 @@ export default function App() {
   useEffect(() => {
     if (!ready) return
     if (screen === 'lobby') playLobbyBgm()
-    else if (screen === 'play' || screen === 'puzzles' || screen === 'analysis' || screen === 'online') playGameBgm()
+    else if (screen === 'play' || screen === 'puzzles' || screen === 'analysis') playGameBgm()
     else stopBgm()
   }, [screen, ready])
 
@@ -793,40 +742,6 @@ export default function App() {
           </div>
 
           <section className="setup-card">
-            <h2>Онлайн</h2>
-            <p className="muted small">Играйте с живым соперником: быстрая игра или приватная партия по ссылке.</p>
-            <div className="row">
-              <label>Часы</label>
-              <div className="seg wrap">
-                {(Object.keys(CLOCK_PRESETS) as ClockPresetId[]).map((id) => (
-                  <button key={id} type="button" className={onlinePreset === id ? 'on' : ''} onClick={() => setOnlinePreset(id)}>
-                    {CLOCK_PRESETS[id].label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="row">
-              <label>Цвет (для партии по ссылке)</label>
-              <div className="seg">
-                {(['w', 'b', 'random'] as const).map((c) => (
-                  <button key={c} type="button" className={onlineColor === c ? 'on' : ''} onClick={() => setOnlineColor(c)}>
-                    {c === 'w' ? 'Белые' : c === 'b' ? 'Чёрные' : 'Случайно'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="btn-row">
-              <button type="button" className="primary" disabled={onlineBusy} onClick={() => void startOnline('quick')}>
-                {onlineBusy ? '…' : 'Быстрая игра'}
-              </button>
-              <button type="button" className="ghost" disabled={onlineBusy} onClick={() => void startOnline('private')}>
-                Играть по ссылке
-              </button>
-            </div>
-            {onlineError && <p className="auth-msg err">{onlineError}</p>}
-          </section>
-
-          <section className="setup-card">
             <h2>Партия</h2>
             <div className="row">
               <label>Режим</label>
@@ -1129,15 +1044,6 @@ export default function App() {
             </div>
           </div>
         </main>
-      )}
-
-      {screen === 'online' && onlineRoomId && (
-        <OnlineGame
-          roomId={onlineRoomId}
-          settings={settings}
-          onExit={exitOnline}
-          onSwitchRoom={openOnlineRoom}
-        />
       )}
 
       {pendingPromo && (
