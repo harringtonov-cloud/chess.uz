@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { FILE_NAMES, makeSquare, type Color, type Position, type Square } from '../chess/index.ts'
-import { pieceUrl } from '../chess-ui/pieces.ts'
+import { pieceUrl, type PieceSetId } from '../chess-ui/pieces.ts'
 import { THEMES, type ThemeId } from '../game/config'
 
 type Props = {
@@ -18,6 +18,12 @@ type Props = {
   /** Правый клик по доске — отмена пре-мува. */
   onCancel?: () => void
   highlightCheck?: boolean
+  pieceSet?: PieceSetId
+  showCoords?: boolean
+  /** Подсветка последнего хода. */
+  showLastMove?: boolean
+  /** Точки допустимых ходов. */
+  showLegal?: boolean
 }
 
 export function ChessBoard({
@@ -33,6 +39,10 @@ export function ChessBoard({
   onSquareClick,
   onCancel,
   highlightCheck = true,
+  pieceSet = 'classic',
+  showCoords = true,
+  showLastMove = true,
+  showLegal = true,
 }: Props) {
   const t = THEMES[theme]
   const [dragOver, setDragOver] = useState<Square | null>(null)
@@ -69,8 +79,8 @@ export function ChessBoard({
           const name = FILE_NAMES[file] + String(rank + 1)
           const piece = position.pieceAt(sq)
           const isLight = (file + rank) % 2 === 1
-          const isTarget = legalTargets.includes(sq)
-          const isLast = !!lastMove && (lastMove.from === sq || lastMove.to === sq)
+          const isTarget = showLegal && legalTargets.includes(sq)
+          const isLast = showLastMove && !!lastMove && (lastMove.from === sq || lastMove.to === sq)
           const isPremove = !!premove && (premove.from === sq || premove.to === sq)
 
           return (
@@ -114,7 +124,7 @@ export function ChessBoard({
               {piece && (
                 <img
                   className="piece"
-                  src={pieceUrl(piece.color, piece.role)}
+                  src={pieceUrl(piece.color, piece.role, pieceSet)}
                   alt={piece.color + piece.role}
                   draggable={interactive}
                   onDragStart={() => {
@@ -126,12 +136,12 @@ export function ChessBoard({
                   }}
                 />
               )}
-              {file === rightFileShown && (
+              {showCoords && file === rightFileShown && (
                 <span className="coord rank" style={{ color: isLight ? t.lightText : t.darkText }}>
                   {rank + 1}
                 </span>
               )}
-              {rank === lastRankShown && (
+              {showCoords && rank === lastRankShown && (
                 <span className="coord file" style={{ color: isLight ? t.lightText : t.darkText }}>
                   {FILE_NAMES[file]}
                 </span>
