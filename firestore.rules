@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Партии (история): создавать и читать можно только свои
+    match /games/{gameId} {
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.pgn is string
+                    && request.resource.data.pgn.size() < 20000;
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Онлайн-комнаты. Шахматные правила проверяют клиенты (src/online/room.ts);
+    // здесь — защита от самых грубых нарушений: чужие места, чужой ход, правка прошлых ходов.
+    match /rooms/{roomId} {
+      function isMember() {
+        return request.auth != null
+          && (resource.data.white == request.auth.uid || resource.data.black == request.auth.uid);
+      }
+      function seatsKept() {
+        return request.resource.data.white == resource.data.white
+          && request.resource.data.black == resource.data.black
+          && request.resource.data.baseMs == resource.data.baseMs
+          && request.resource.data.incMs == resource.data.incMs;
+      }
+      function sameMoves() {
+        return request.resource.data.moves == resource.data.moves;
+      }
+      function oneMoreMove() {
+        return request.resource.data.moves.size() == resource.data.moves.size() + 1
+          && request.resource.data.moves[0:resource.data.moves.size()] == resource.data.moves
+          && resource.data.status == 'playing'
+          && (resource.data.moves.size() % 2 == 0 ? resource.data.white : resource.data.black) == request.auth.uid;
+      }
+      function joiningEmptySeat() {
+        return resource.data.status == 'waiting'
+          && request.resource.data.status == 'playing'
+          && request.resource.data.moves.size() == 0
+          && request.resource.data.baseMs == resource.data.baseMs
+          && ((resource.data.white == null
+                && resource.data.black != request.auth.uid
+                && request.resource.data.white == request.auth.uid
+                && request.resource.data.black == resource.data.black)
+              || (resource.data.black == null
+                && resource.data.white != request.auth.uid
+                && request.resource.data.black == request.auth.uid
+                && request.resource.data.white == resource.data.white));
+      }
+
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.moves.size() == 0
+        && (request.resource.data.white == request.auth.uid || request.resource.data.black == request.auth.uid);
+
+      allow update: if request.auth != null
+        && ((isMember() && resource.data.status != 'finished' && seatsKept()
+              && (sameMoves() || oneMoreMove()))
+            || joiningEmptySeat());
+
+      allow delete: if false;
+    }
+  }
+}
