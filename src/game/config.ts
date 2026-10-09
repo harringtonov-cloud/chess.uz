@@ -3,163 +3,96 @@ import { timeControl, type TimeControl } from '../chess/index.ts'
 export const GAME_NAME = 'CHESS.UZ'
 
 export type ThemeId = 'lichess' | 'green' | 'blue' | 'purple' | 'grey' | 'royal' | 'midnight' | 'ember'
-
 export type ClockPresetId = 'none' | 'bullet1' | 'bullet2' | 'blitz3' | 'blitz5' | 'rapid10' | 'rapid15'
-
-export type VariantId = 
-  | 'standard' 
-  | 'chess960' 
-  | 'crazyhouse' 
-  | 'threeCheck' 
-  | 'fiveCheck'
-  | 'atomic' 
-  | 'antichess' 
-  | 'kingOfTheHill' 
-  | 'horde' 
-  | 'racingKings'
-
 export type AiLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
-
 export type PlayMode = 'ai' | 'local'
 
-export const VARIANTS: Record<VariantId, { label: string; lichessKey: string; desc: string }> = {
-  standard: { label: 'Стандарт', lichessKey: 'standard', desc: 'Классические шахматы' },
-  chess960: { label: 'Шах960', lichessKey: 'chess960', desc: 'Фишер рэндом, 960 позиций' },
-  crazyhouse: { label: 'Крейзихаус', lichessKey: 'crazyhouse', desc: 'Съеденные фигуры можно ставить' },
-  threeCheck: { label: '3 шаха', lichessKey: 'threeCheck', desc: 'Победа после 3 шахов королю' },
-  fiveCheck: { label: '5 шахов', lichessKey: 'fiveCheck', desc: 'Победа после 5 шахов' },
-  atomic: { label: 'Атомик', lichessKey: 'atomic', desc: 'Взрывы вокруг взятия' },
-  antichess: { label: 'Поддавки', lichessKey: 'antichess', desc: 'Кто первый съел все фигуры - победил' },
-  kingOfTheHill: { label: 'Царь горы', lichessKey: 'kingOfTheHill', desc: 'Приведи короля в центр - победа' },
-  horde: { label: 'Орда', lichessKey: 'horde', desc: 'Пешки против фигур' },
-  racingKings: { label: 'Гонка королей', lichessKey: 'racingKings', desc: 'Кто первым доведет короля до 8-й линии' },
+export type VariantId = 
+  | 'standard'
+  | 'chess960'
+  | 'fromPosition'
+  | 'kingOfTheHill'
+  | 'threeCheck'
+  | 'antichess'
+  | 'atomic'
+  | 'horde'
+  | 'racingKings'
+  | 'crazyhouse'
+
+export const VARIANTS: Record<VariantId, { label: string; desc: string; lichessKey: string }> = {
+  standard: { label: 'Шахматы', desc: 'Стандартные правила шахмат (FIDE)', lichessKey: 'standard' },
+  chess960: { label: 'Шахматы Фишера', desc: 'Стартовая позиция фигур на последней линии определяется случайно.', lichessKey: 'chess960' },
+  fromPosition: { label: 'С позиции', desc: 'Стандартные шахматы с заданной позиции', lichessKey: 'fromPosition' },
+  kingOfTheHill: { label: 'Царь горы', desc: 'Проведите короля в центр доски, чтобы выиграть партию.', lichessKey: 'kingOfTheHill' },
+  threeCheck: { label: 'Три шаха', desc: 'Объявите 3 шаха, чтобы победить.', lichessKey: 'threeCheck' },
+  antichess: { label: 'Анти-Шахматы', desc: 'Проиграйте все ваши фигуры (или получите пат), чтобы выиграть игру.', lichessKey: 'antichess' },
+  atomic: { label: 'Атомные шахматы', desc: 'Взорвите короля противника, чтобы победить.', lichessKey: 'atomic' },
+  horde: { label: 'Орда', desc: 'Одна сторона имеет большое количество пешек, когда другая имеет стандартный набор фигур.', lichessKey: 'horde' },
+  racingKings: { label: 'Гонка королей', desc: 'Проведите своего короля на другую сторону доски, чтобы победить.', lichessKey: 'racingKings' },
+  crazyhouse: { label: 'Крэйзихаус', desc: 'Срубленные фигуры могут быть возвращены на доску вместо хода фигурой.', lichessKey: 'crazyhouse' },
 }
 
-export const THEMES: Record<
-  ThemeId,
-  {
-    label: string
-    light: string
-    dark: string
-    lightText: string
-    darkText: string
-    select: string
-    moveTo: string
-    last: string
-    check: string
-    premove: string
-    boardBorder: string
-    flat?: boolean
-  }
-> = {
+export const THEMES: Record<ThemeId, {
+  label: string
+  light: string
+  dark: string
+  lightText: string
+  darkText: string
+  select: string
+  moveTo: string
+  last: string
+  check: string
+  premove: string
+  boardBorder: string
+  flat?: boolean
+}> = {
   lichess: {
     label: 'Классика (коричневая)',
-    light: '#f0d9b5',
-    dark: '#b58863',
-    lightText: '#b58863',
-    darkText: '#f0d9b5',
-    select: 'rgba(20, 85, 30, 0.5)',
-    moveTo: 'rgba(20, 85, 0, 0.5)',
-    last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)',
-    premove: 'rgba(20, 30, 85, 0.5)',
-    boardBorder: 'transparent',
-    flat: true,
+    light: '#f0d9b5', dark: '#b58863', lightText: '#b58863', darkText: '#f0d9b5',
+    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
+    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
   },
   green: {
     label: 'Зелёная',
-    light: '#ffffdd',
-    dark: '#86a666',
-    lightText: '#86a666',
-    darkText: '#ffffdd',
-    select: 'rgba(20, 85, 30, 0.5)',
-    moveTo: 'rgba(20, 85, 0, 0.5)',
-    last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)',
-    premove: 'rgba(20, 30, 85, 0.5)',
-    boardBorder: 'transparent',
-    flat: true,
+    light: '#ffffdd', dark: '#86a666', lightText: '#86a666', darkText: '#ffffdd',
+    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
+    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
   },
   blue: {
     label: 'Синяя',
-    light: '#dee3e6',
-    dark: '#8ca2ad',
-    lightText: '#8ca2ad',
-    darkText: '#dee3e6',
-    select: 'rgba(20, 85, 30, 0.5)',
-    moveTo: 'rgba(20, 85, 0, 0.5)',
-    last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)',
-    premove: 'rgba(20, 30, 85, 0.5)',
-    boardBorder: 'transparent',
-    flat: true,
+    light: '#dee3e6', dark: '#8ca2ad', lightText: '#8ca2ad', darkText: '#dee3e6',
+    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
+    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
   },
   purple: {
     label: 'Фиолетовая',
-    light: '#9f90b0',
-    dark: '#7d4a8d',
-    lightText: '#7d4a8d',
-    darkText: '#9f90b0',
-    select: 'rgba(20, 85, 30, 0.5)',
-    moveTo: 'rgba(20, 85, 0, 0.5)',
-    last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)',
-    premove: 'rgba(20, 30, 85, 0.5)',
-    boardBorder: 'transparent',
-    flat: true,
+    light: '#9f90b0', dark: '#7d4a8d', lightText: '#7d4a8d', darkText: '#9f90b0',
+    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
+    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
   },
   grey: {
     label: 'Серая',
-    light: '#b8b8b8',
-    dark: '#8d8d8d',
-    lightText: '#8d8d8d',
-    darkText: '#b8b8b8',
-    select: 'rgba(20, 85, 30, 0.5)',
-    moveTo: 'rgba(20, 85, 0, 0.5)',
-    last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)',
-    premove: 'rgba(20, 30, 85, 0.5)',
-    boardBorder: 'transparent',
-    flat: true,
+    light: '#b8b8b8', dark: '#8d8d8d', lightText: '#8d8d8d', darkText: '#b8b8b8',
+    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
+    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
   },
   royal: {
     label: 'Royal Neon',
-    light: '#2a3358',
-    dark: '#151a33',
-    lightText: '#7dd3fc',
-    darkText: '#67e8f9',
-    select: 'rgba(34, 211, 238, 0.55)',
-    moveTo: 'rgba(236, 72, 153, 0.45)',
-    last: 'rgba(250, 204, 21, 0.35)',
-    check: 'rgba(239, 68, 68, 0.7)',
-    premove: 'rgba(59, 130, 246, 0.55)',
-    boardBorder: '#22d3ee',
+    light: '#2a3358', dark: '#151a33', lightText: '#7dd3fc', darkText: '#67e8f9',
+    select: 'rgba(34, 211, 238, 0.55)', moveTo: 'rgba(236, 72, 153, 0.45)', last: 'rgba(250, 204, 21, 0.35)',
+    check: 'rgba(239, 68, 68, 0.7)', premove: 'rgba(59, 130, 246, 0.55)', boardBorder: '#22d3ee',
   },
   midnight: {
     label: 'Midnight',
-    light: '#1e3a5f',
-    dark: '#0b1224',
-    lightText: '#93c5fd',
-    darkText: '#60a5fa',
-    select: 'rgba(96, 165, 250, 0.55)',
-    moveTo: 'rgba(167, 139, 250, 0.45)',
-    last: 'rgba(52, 211, 153, 0.35)',
-    check: 'rgba(248, 113, 113, 0.7)',
-    premove: 'rgba(250, 204, 21, 0.45)',
-    boardBorder: '#60a5fa',
+    light: '#1e3a5f', dark: '#0b1224', lightText: '#93c5fd', darkText: '#60a5fa',
+    select: 'rgba(96, 165, 250, 0.55)', moveTo: 'rgba(167, 139, 250, 0.45)', last: 'rgba(52, 211, 153, 0.35)',
+    check: 'rgba(248, 113, 113, 0.7)', premove: 'rgba(250, 204, 21, 0.45)', boardBorder: '#60a5fa',
   },
   ember: {
     label: 'Ember',
-    light: '#3b2a2a',
-    dark: '#1a1014',
-    lightText: '#fdba74',
-    darkText: '#fb7185',
-    select: 'rgba(251, 146, 60, 0.55)',
-    moveTo: 'rgba(244, 63, 94, 0.45)',
-    last: 'rgba(250, 204, 21, 0.35)',
-    check: 'rgba(239, 68, 68, 0.75)',
-    premove: 'rgba(59, 130, 246, 0.55)',
-    boardBorder: '#fb7185',
+    light: '#3b2a2a', dark: '#1a1014', lightText: '#fdba74', darkText: '#fb7185',
+    select: 'rgba(251, 146, 60, 0.55)', moveTo: 'rgba(244, 63, 94, 0.45)', last: 'rgba(250, 204, 21, 0.35)',
+    check: 'rgba(239, 68, 68, 0.75)', premove: 'rgba(59, 130, 246, 0.55)', boardBorder: '#fb7185',
   },
 }
 
