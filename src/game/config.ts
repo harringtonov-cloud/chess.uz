@@ -1,135 +1,33 @@
-import { timeControl, type TimeControl } from '../chess/index.ts'
-
-export const GAME_NAME = 'CHESS.UZ'
-
-export type ThemeId = 'lichess' | 'green' | 'blue' | 'purple' | 'grey' | 'royal' | 'midnight' | 'ember'
-export type ClockPresetId = 'none' | 'bullet1' | 'bullet2' | 'blitz3' | 'blitz5' | 'rapid10' | 'rapid15'
-export type AiLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12
-export type PlayMode = 'ai' | 'local'
-
-export type VariantId = 
-  | 'standard'
-  | 'chess960'
-  | 'fromPosition'
-  | 'kingOfTheHill'
-  | 'threeCheck'
-  | 'antichess'
-  | 'atomic'
-  | 'horde'
-  | 'racingKings'
-  | 'crazyhouse'
-
-export const VARIANTS: Record<VariantId, { label: string; desc: string; lichessKey: string }> = {
-  standard: { label: 'Шахматы', desc: 'Стандартные правила шахмат (FIDE)', lichessKey: 'standard' },
-  chess960: { label: 'Шахматы Фишера', desc: 'Стартовая позиция фигур на последней линии определяется случайно.', lichessKey: 'chess960' },
-  fromPosition: { label: 'С позиции', desc: 'Стандартные шахматы с заданной позиции', lichessKey: 'fromPosition' },
-  kingOfTheHill: { label: 'Царь горы', desc: 'Проведите короля в центр доски, чтобы выиграть партию.', lichessKey: 'kingOfTheHill' },
-  threeCheck: { label: 'Три шаха', desc: 'Объявите 3 шаха, чтобы победить.', lichessKey: 'threeCheck' },
-  antichess: { label: 'Анти-Шахматы', desc: 'Проиграйте все ваши фигуры (или получите пат), чтобы выиграть игру.', lichessKey: 'antichess' },
-  atomic: { label: 'Атомные шахматы', desc: 'Взорвите короля противника, чтобы победить.', lichessKey: 'atomic' },
-  horde: { label: 'Орда', desc: 'Одна сторона имеет большое количество пешек, когда другая имеет стандартный набор фигур.', lichessKey: 'horde' },
-  racingKings: { label: 'Гонка королей', desc: 'Проведите своего короля на другую сторону доски, чтобы победить.', lichessKey: 'racingKings' },
-  crazyhouse: { label: 'Крэйзихаус', desc: 'Срубленные фигуры могут быть возвращены на доску вместо хода фигурой.', lichessKey: 'crazyhouse' },
-}
-
-export const THEMES: Record<ThemeId, {
-  label: string
-  light: string
-  dark: string
-  lightText: string
-  darkText: string
-  select: string
-  moveTo: string
-  last: string
-  check: string
-  premove: string
-  boardBorder: string
-  flat?: boolean
-}> = {
-  lichess: {
-    label: 'Классика (коричневая)',
-    light: '#f0d9b5', dark: '#b58863', lightText: '#b58863', darkText: '#f0d9b5',
-    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
-  },
-  green: {
-    label: 'Зелёная',
-    light: '#ffffdd', dark: '#86a666', lightText: '#86a666', darkText: '#ffffdd',
-    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
-  },
-  blue: {
-    label: 'Синяя',
-    light: '#dee3e6', dark: '#8ca2ad', lightText: '#8ca2ad', darkText: '#dee3e6',
-    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
-  },
-  purple: {
-    label: 'Фиолетовая',
-    light: '#9f90b0', dark: '#7d4a8d', lightText: '#7d4a8d', darkText: '#9f90b0',
-    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
-  },
-  grey: {
-    label: 'Серая',
-    light: '#b8b8b8', dark: '#8d8d8d', lightText: '#8d8d8d', darkText: '#b8b8b8',
-    select: 'rgba(20, 85, 30, 0.5)', moveTo: 'rgba(20, 85, 0, 0.5)', last: 'rgba(155, 199, 0, 0.41)',
-    check: 'rgba(235, 20, 20, 0.85)', premove: 'rgba(20, 30, 85, 0.5)', boardBorder: 'transparent', flat: true,
-  },
-  royal: {
-    label: 'Royal Neon',
-    light: '#2a3358', dark: '#151a33', lightText: '#7dd3fc', darkText: '#67e8f9',
-    select: 'rgba(34, 211, 238, 0.55)', moveTo: 'rgba(236, 72, 153, 0.45)', last: 'rgba(250, 204, 21, 0.35)',
-    check: 'rgba(239, 68, 68, 0.7)', premove: 'rgba(59, 130, 246, 0.55)', boardBorder: '#22d3ee',
-  },
-  midnight: {
-    label: 'Midnight',
-    light: '#1e3a5f', dark: '#0b1224', lightText: '#93c5fd', darkText: '#60a5fa',
-    select: 'rgba(96, 165, 250, 0.55)', moveTo: 'rgba(167, 139, 250, 0.45)', last: 'rgba(52, 211, 153, 0.35)',
-    check: 'rgba(248, 113, 113, 0.7)', premove: 'rgba(250, 204, 21, 0.45)', boardBorder: '#60a5fa',
-  },
-  ember: {
-    label: 'Ember',
-    light: '#3b2a2a', dark: '#1a1014', lightText: '#fdba74', darkText: '#fb7185',
-    select: 'rgba(251, 146, 60, 0.55)', moveTo: 'rgba(244, 63, 94, 0.45)', last: 'rgba(250, 204, 21, 0.35)',
-    check: 'rgba(239, 68, 68, 0.75)', premove: 'rgba(59, 130, 246, 0.55)', boardBorder: '#fb7185',
-  },
-}
-
-export const CLOCK_PRESETS: Record<ClockPresetId, { label: string; tc: TimeControl }> = {
-  none: { label: 'Без часов', tc: timeControl(0, 0) },
-  bullet1: { label: 'Bullet 1+0', tc: timeControl(1, 0) },
-  bullet2: { label: 'Bullet 2+1', tc: timeControl(2, 1) },
-  blitz3: { label: 'Blitz 3+2', tc: timeControl(3, 2) },
-  blitz5: { label: 'Blitz 5+0', tc: timeControl(5, 0) },
-  rapid10: { label: 'Rapid 10+0', tc: timeControl(10, 0) },
-  rapid15: { label: 'Rapid 15+10', tc: timeControl(15, 10) },
-}
-
-export const AI_LEVELS: Record<AiLevel, { label: string; depth: number; ms: number; noise: number; elo: number }> = {
-  1: { label: 'Уровень 1', depth: 1, ms: 300, noise: 400, elo: 400 },
-  2: { label: 'Уровень 2', depth: 1, ms: 300, noise: 250, elo: 600 },
-  3: { label: 'Уровень 3', depth: 2, ms: 500, noise: 160, elo: 800 },
-  4: { label: 'Уровень 4', depth: 2, ms: 500, noise: 90, elo: 1000 },
-  5: { label: 'Уровень 5', depth: 3, ms: 800, noise: 60, elo: 1200 },
-  6: { label: 'Уровень 6', depth: 3, ms: 1000, noise: 25, elo: 1400 },
-  7: { label: 'Уровень 7', depth: 4, ms: 1000, noise: 10, elo: 1550 },
-  8: { label: 'Уровень 8', depth: 5, ms: 1500, noise: 0, elo: 1700 },
-  9: { label: 'Уровень 9', depth: 6, ms: 2500, noise: 0, elo: 1850 },
-  10: { label: 'Уровень 10', depth: 8, ms: 4000, noise: 0, elo: 2000 },
-  11: { label: 'Уровень 11', depth: 10, ms: 6000, noise: 0, elo: 2100 },
-  12: { label: 'Уровень 12', depth: 12, ms: 9000, noise: 0, elo: 2200 },
-}
-
-export const COLORS = {
-  bg: '#070a14',
-  panel: 'rgba(10, 14, 30, 0.82)',
-  panelSolid: '#0d1224',
-  cyan: '#22d3ee',
-  magenta: '#ec4899',
-  gold: '#facc15',
-  text: '#e8eefc',
-  muted: '#8b9bb8',
-  danger: '#fb7185',
-  ok: '#34d399',
-}
+<!DOCTYPE html><html lang="en" class="optimisticai_d4925249-module__WZtcjq__variable optimisticmono_9b82a078-module__hMSRWa__variable light"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="/_next/static/immutable/chunks/0_n83orcwyk4s.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/immutable/chunks/1bu7odp3ip0pm.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/immutable/chunks/42e7h9g2vn8e3.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/immutable/chunks/287l5xq35imjj.css" data-precedence="next"/><link rel="stylesheet" href="/_next/static/immutable/chunks/17oghy4n4g9qf.css" data-precedence="next"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/immutable/chunks/36baba7il59p9.js"/><script src="/_next/static/immutable/chunks/3vhaaj_jeo2qf.js" async=""></script><script src="/_next/static/immutable/chunks/2nqiqj-lrk2yk.js" async=""></script><script src="/_next/static/immutable/chunks/turbopack-34mn7lvkma19o.js" async=""></script><script src="/_next/static/immutable/chunks/1dq47j4p-xg3o.js" async=""></script><script src="/_next/static/immutable/chunks/2t-jlsga_9q2d.js" async=""></script><meta name="next-size-adjust" content=""/><script>(function(){try{var d=document.documentElement,m=window.matchMedia("(prefers-color-scheme: dark)");function a(){var c=d.classList;if(m.matches){c.remove("light");c.add("dark");}else{c.remove("dark");c.add("light");}}a();m.addEventListener("change",a);}catch(e){}})()</script><meta name="sentry-trace" content="b5e046ea7942470bbaf08fd9a9af250e-9dbf56d286f29cc1-0"/><meta name="baggage" content="sentry-environment=production,sentry-release=26dc18ef81d4554eb7898f514cb8b9fd3007bb12,sentry-public_key=217336c598020d63d1a44137ff8fdb71,sentry-trace_id=b5e046ea7942470bbaf08fd9a9af250e,sentry-org_id=4509963614355457,sentry-sampled=false,sentry-sample_rand=0.2667420150900345,sentry-sample_rate=0.1"/><script src="/_next/static/immutable/chunks/0cz1d0mv5g_q7.js" noModule=""></script></head><body><div hidden=""><!--$--><!--/$--></div><div class="min-h-dvh px-6 pt-8 pb-8 font-mono text-[14px] leading-[1.6]"><pre class="mx-auto flex max-w-[1000px] items-start bg-transparent"><div class="text-text-tertiary border-fill-divider me-4 min-w-[40px] shrink-0 border-e pe-4 text-end select-none" aria-hidden="true"><div>1</div><div>2</div><div>3</div><div>4</div><div>5</div><div>6</div><div>7</div><div>8</div><div>9</div><div>10</div><div>11</div><div>12</div><div>13</div><div>14</div><div>15</div><div>16</div><div>17</div><div>18</div><div>19</div><div>20</div><div>21</div><div>22</div><div>23</div><div>24</div><div>25</div><div>26</div><div>27</div><div>28</div><div>29</div><div>30</div><div>31</div><div>32</div><div>33</div><div>34</div><div>35</div><div>36</div><div>37</div><div>38</div><div>39</div><div>40</div><div>41</div><div>42</div><div>43</div><div>44</div><div>45</div><div>46</div><div>47</div><div>48</div><div>49</div><div>50</div><div>51</div><div>52</div><div>53</div><div>54</div><div>55</div><div>56</div><div>57</div><div>58</div><div>59</div><div>60</div><div>61</div><div>62</div><div>63</div><div>64</div><div>65</div><div>66</div><div>67</div><div>68</div><div>69</div><div>70</div><div>71</div><div>72</div><div>73</div><div>74</div><div>75</div><div>76</div><div>77</div><div>78</div><div>79</div><div>80</div><div>81</div><div>82</div><div>83</div><div>84</div><div>85</div><div>86</div><div>87</div><div>88</div><div>89</div><div>90</div><div>91</div><div>92</div><div>93</div><div>94</div><div>95</div><div>96</div><div>97</div><div>98</div><div>99</div><div>100</div><div>101</div><div>102</div><div>103</div><div>104</div><div>105</div><div>106</div><div>107</div><div>108</div><div>109</div><div>110</div><div>111</div><div>112</div><div>113</div><div>114</div><div>115</div><div>116</div><div>117</div><div>118</div><div>119</div><div>120</div><div>121</div><div>122</div><div>123</div><div>124</div><div>125</div><div>126</div><div>127</div><div>128</div><div>129</div><div>130</div><div>131</div><div>132</div><div>133</div><div>134</div><div>135</div><div>136</div></div><code class="block min-w-0 flex-1 overflow-x-auto whitespace-pre"><pre class="shiki shiki-themes github-light github-dark" style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e" tabindex="0"><code><span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">import</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> { timeControl, </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">type</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> TimeControl } </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">from</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> '../chess/index.ts'</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">export</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> GAME_NAME</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'CHESS.UZ'</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">export</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> type</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> ThemeId</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'lichess'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'green'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'blue'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'purple'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'grey'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'royal'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'midnight'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'ember'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">export</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> type</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> ClockPresetId</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'none'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'bullet1'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'bullet2'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'blitz3'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'blitz5'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'rapid10'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'rapid15'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">export</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> type</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> AiLevel</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 1</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 2</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 3</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 4</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 5</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 6</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 7</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 8</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 9</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 10</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 11</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> 12</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">export</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> type</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> PlayMode</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'ai'</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'local'</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">export</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> type</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> VariantId</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> =</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> </span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'standard'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'chess960'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'fromPosition'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'kingOfTheHill'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'threeCheck'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'antichess'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'atomic'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'horde'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'racingKings'</span></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">  |</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF"> 'crazyhouse'</span></span>
+<span class="line"></span>
+<span class="line"><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">export</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583"> const</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> VARIANTS</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">:</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0"> Record</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">&#x3C;</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">VariantId</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, { </span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">label</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">:</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> string</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; </span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">desc</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">:</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> string</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">; </span><span style="--shiki-light:#E36209;--shiki-dark:#FFAB70">lichessKey</span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">:</span><span style="--shiki-light:#005CC5;--shiki-dark:#79B8FF"> string</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> }> </span><span style="--shiki-light:#D73A49;--shiki-dark:#F97583">=</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> {</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  standard: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Шахматы'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Стандартные правила шахмат (FIDE)'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'standard'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  chess960: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Шахматы Фишера'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Стартовая позиция фигур на последней линии определяется случайно.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'chess960'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  fromPosition: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'С позиции'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Стандартные шахматы с заданной позиции'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'fromPosition'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  kingOfTheHill: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Царь горы'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Проведите короля в центр доски, чтобы выиграть партию.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'kingOfTheHill'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  threeCheck: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Три шаха'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Объявите 3 шаха, чтобы победить.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'threeCheck'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  antichess: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Анти-Шахматы'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Проиграйте все ваши фигуры (или получите пат), чтобы выиграть игру.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'antichess'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  atomic: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Атомные шахматы'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Взорвите короля противника, чтобы победить.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'atomic'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  horde: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Орда'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Одна сторона имеет большое количество пешек, когда другая имеет стандартный набор фигур.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'horde'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  racingKings: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Гонка королей'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Проведите своего короля на другую сторону доски, чтобы победить.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'racingKings'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">  crazyhouse: { label: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Крэйзихаус'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, desc: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'Срубленные фигуры могут быть возвращены на доску вместо хода фигурой.'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8">, lichessKey: </span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">'crazyhouse'</span><span style="--shiki-light:#24292E;--shiki-dark:#E1E4E8"> },</span></span>
+<span class="line"><span st
