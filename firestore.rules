@@ -1,0 +1,48 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    match /users/{uid} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /games/{gid} {
+      allow read: if true;
+
+      // Создать партию может только участник
+      allow create: if signedIn()
+        && (request.resource.data.white == request.auth.uid
+            || request.resource.data.black == request.auth.uid);
+
+      // Обновлять партию могут игроки; присоединиться может любой вошедший
+      // пользователь, если партия ждёт соперника и он занимает свободное место.
+      allow update: if signedIn() && (
+        resource.data.white == request.auth.uid
+        || resource.data.black == request.auth.uid
+        || (resource.data.status == 'waiting'
+            && request.resource.data.status == 'active'
+            && (request.resource.data.white == request.auth.uid
+                || request.resource.data.black == request.auth.uid))
+      );
+
+      allow delete: if signedIn()
+        && resource.data.status == 'waiting'
+        && (resource.data.white == request.auth.uid
+            || resource.data.black == request.auth.uid);
+
+      match /chat/{mid} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 300;
+      }
+    }
+  }
+}

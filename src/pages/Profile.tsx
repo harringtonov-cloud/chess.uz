@@ -1,0 +1,147 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { db, firebaseConfigured } from '../firebase';
+import { useAuth } from '../AuthContext';
+import { resultText } from '../lib/chessUtil';
+import { CATEGORY_LABEL, tcLabel } from '../lib/timeControls';
+import type { GameDoc, Profile as ProfileDoc } from '../lib/types';
+
+export default function Profile() {
+  const { uid = '' } = useParams();
+  const { user, profile: me } = useAuth();
+  const [p, setP] = useState<ProfileDoc | null | undefined>(undefined);
+  const [games, setGames] = useState<{ id: string; g: GameDoc }[]>([]);
+  const [gamesError, setGamesError] = useState('');
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [bio, setBio] = useState('');
+  const [country, setCountry] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  const isMe = user?.uid === uid;
+  const shown = isMe && me ? me : p;
+
+  useEffect(() => {
+    if (!firebaseConfigured) return;
+    setP(undefined);
+    getDoc(doc(db, 'users', uid))
+      .then((s) => setP(s.exists() ? ({ ...(s.data() as ProfileDoc), uid }) : null))
+      .catch(() => setP(null));
+    getDocs(
+      query(collection(db, 'games'), where('participants', 'array-contains', uid), orderBy('createdAt', 'desc'), limit(20)),
+    )
+      .then((snap) => setGames(snap.docs.map((d) => ({ id: d.id, g: d.data() as GameDoc }))))
+      .catch((e: Error) => setGamesError(e.message));
+  }, [uid]);
+
+  if (!firebaseConfigured) return <div className="card">Профили доступны после подключения Firebase.</div>;
+  if (shown === undefined) return <div className="card">Загрузка…</div>;
+  if (shown === null) return <div className="card">Игрок не найден.</div>;
+
+  async function save() {
+    await updateDoc(doc(db, 'users', uid), {
+      name: name.trim().slice(0, 24) || shown!.name,
+      bio: bio.slice(0, 200),
+      country: country.slice(0, 2).toUpperCase(),
+    });
+    setEditing(false);
+    setSaved(true);
+  }
+
+  const flag = (code: string) =>
+    code.length === 2
+      ? String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
+      : '';
+
+  return (
+    <div className="profile">
+      <div className="card">
+        <div className="row spread">
+          <h2>
+            {flag(shown.country)} {shown.name}
+          </h2>
+          {isMe && !editing && (
+            <button
+              className="btn small"
+              onClick={() => {
+                setName(shown.name);
+                setBio(shown.bio ?? '');
+                setCountry(shown.country ?? '');
+                setEditing(true);
+              }}
+            >
+              Редактировать
+            </button>
+          )}
+        </div>
+        {editing ? (
+          <div className="form">
+            <input value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Ник" />
+            <input
+              value={country}
+              maxLength={2}
+              onChange={(e) => setCountry(e.target.value)}
+              placeholder="Код страны, например UZ"
+            />
+            <textarea value={bio} maxLength={200} onChange={(e) => setBio(e.target.value)} placeholder="О себе" />
+            <div className="row">
+              <button className="btn primary" onClick={save}>Сохранить</button>
+              <button className="btn" onClick={() => setEditing(false)}>Отмена</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {shown.bio && <p>{shown.bio}</p>}
+            {saved && <p className="muted">Сохранено ✓</p>}
+          </>
+        )}
+        <div className="ratings">
+          {(['bullet', 'blitz', 'rapid', 'classical'] as const).map((c) => (
+            <div key={c} className="rating-box">
+              <span className="muted">{CATEGORY_LABEL[c]}</span>
+              <b>{shown.ratings?.[c] ?? 1200}</b>
+            </div>
+          ))}
+          <div className="rating-box">
+            <span className="muted">Головоломки</span>
+            <b>{shown.ratings?.puzzle ?? 1200}</b>
+          </div>
+        </div>
+        <div className="muted">
+          Партий: {shown.stats?.games ?? 0} · побед {shown.stats?.wins ?? 0} · ничьих {shown.stats?.draws ?? 0} ·
+          поражений {shown.stats?.losses ?? 0}
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>Последние партии</h3>
+        {gamesError && (
+          <p className="error">
+            {gamesError.includes('index')
+              ? 'Нужен индекс Firestore: выполните `firebase deploy --only firestore:indexes` (см. README).'
+              : gamesError}
+          </p>
+        )}
+        {games.length === 0 && !gamesError && <p className="muted">Партий пока нет</p>}
+        <table className="table">
+          <tbody>
+            {games
+              .filter(({ g }) => g.status !== 'waiting')
+              .map(({ id, g }) => (
+                <tr key={id}>
+                  <td>
+                    <Link to={`/game/${id}`}>
+                      {g.whiteName} — {g.blackName}
+                    </Link>
+                  </td>
+                  <td>{tcLabel({ base: g.base, inc: g.inc })}</td>
+                  <td>{g.status === 'finished' ? resultText(g.result, g.reason) : 'идёт'}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
