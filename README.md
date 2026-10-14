@@ -1,6 +1,6 @@
 # chess.uz
 
-Шахматный сайт: React + Vite + TypeScript, база и вход — Firebase (Auth + Firestore), хостинг — Netlify.
+Шахматный сайт: React + Vite + TypeScript, база и вход — Firebase (Auth + Firestore), хостинг — Vercel.
 
 ## Что уже есть
 
@@ -37,11 +37,11 @@ npm run dev
    ```
    Это загрузит `firestore.rules` и `firestore.indexes.json` (индекс нужен для истории партий в профиле).
 
-## Деплой на Netlify
+## Деплой на Vercel
 
-1. **Add new site → Import from Git** → выберите этот репозиторий. Настройки подтянутся из `netlify.toml` (build: `npm run build`, publish: `dist`).
-2. **Site settings → Environment variables**: добавьте все `VITE_FIREBASE_*` из `.env.example`.
-3. Запустите деплой. Маршрутизация SPA настроена в `netlify.toml`.
+1. **Add New → Project** → выберите репозиторий. Vercel сам определит Vite (build: `npm run build`, output: `dist`); маршрутизация SPA настроена в `vercel.json`.
+2. Конфиг Firebase уже зашит в `src/firebase.ts` как значения по умолчанию. Чтобы использовать другой проект Firebase, задайте `VITE_FIREBASE_*` в Project Settings → Environment Variables.
+3. После первого деплоя добавьте домен Vercel (`*.vercel.app`) и свой домен (chess.uz) в Firebase → Authentication → Settings → **Authorized domains**, иначе вход через Google не сработает.
 
 ## Известные ограничения (важно)
 
