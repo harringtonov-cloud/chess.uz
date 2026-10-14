@@ -5,6 +5,7 @@ import { db, firebaseConfigured } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { resultText } from '../lib/chessUtil';
 import { CATEGORY_LABEL, tcLabel } from '../lib/timeControls';
+import { acceptFriendRequest, pairId, removeFriendship, sendFriendRequest, useFriendships } from '../lib/social';
 import type { GameDoc, Profile as ProfileDoc } from '../lib/types';
 
 export default function Profile() {
@@ -18,6 +19,8 @@ export default function Profile() {
   const [bio, setBio] = useState('');
   const [country, setCountry] = useState('');
   const [saved, setSaved] = useState(false);
+  const friendships = useFriendships(user?.uid);
+  const [friendError, setFriendError] = useState('');
 
   const isMe = user?.uid === uid;
   const shown = isMe && me ? me : p;
@@ -49,6 +52,25 @@ export default function Profile() {
     setSaved(true);
   }
 
+  const relation = user ? friendships.find((f) => f.id === pairId(user.uid, uid)) : undefined;
+
+  async function friendAction() {
+    setFriendError('');
+    try {
+      if (!me || !shown) return;
+      if (!relation) await sendFriendRequest(me, { uid, name: shown.name });
+      else if (relation.status === 'pending' && relation.requester !== me.uid) await acceptFriendRequest(relation.id);
+      else await removeFriendship(relation.id);
+    } catch (e) {
+      setFriendError((e as Error).message);
+    }
+  }
+
+  let friendLabel = 'Добавить в друзья';
+  if (relation?.status === 'accepted') friendLabel = 'Удалить из друзей';
+  else if (relation && relation.requester === me?.uid) friendLabel = 'Отменить запрос';
+  else if (relation) friendLabel = 'Принять запрос в друзья';
+
   const flag = (code: string) =>
     code.length === 2
       ? String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
@@ -61,6 +83,11 @@ export default function Profile() {
           <h2>
             {flag(shown.country)} {shown.name}
           </h2>
+          {!isMe && me && (
+            <button className="btn small" onClick={friendAction}>
+              {friendLabel}
+            </button>
+          )}
           {isMe && !editing && (
             <button
               className="btn small"
@@ -75,6 +102,7 @@ export default function Profile() {
             </button>
           )}
         </div>
+        {friendError && <p className="error">{friendError}</p>}
         {editing ? (
           <div className="form">
             <input value={name} maxLength={24} onChange={(e) => setName(e.target.value)} placeholder="Ник" />

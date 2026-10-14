@@ -12,6 +12,57 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Дружба: один документ на пару игроков, id = uid-ы по алфавиту через «_»
+    match /friendships/{pid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.users;
+
+      // Запрос отправляет сам инициатор, статус всегда «pending»
+      allow create: if signedIn()
+        && request.resource.data.users.size() == 2
+        && request.auth.uid in request.resource.data.users
+        && request.resource.data.requester == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && (pid == request.resource.data.users[0] + '_' + request.resource.data.users[1]
+            || pid == request.resource.data.users[1] + '_' + request.resource.data.users[0]);
+
+      // Принять запрос может только получатель; менять другие поля нельзя
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.users
+        && resource.data.status == 'pending'
+        && resource.data.requester != request.auth.uid
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.users == resource.data.users
+        && request.resource.data.requester == resource.data.requester;
+
+      // Отклонить, отменить или удалить из друзей может любой из двоих
+      allow delete: if signedIn() && request.auth.uid in resource.data.users;
+
+      // Личные сообщения — только между подтверждёнными друзьями
+      match /messages/{mid} {
+        allow read: if signedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/friendships/$(pid)).data.users;
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 300
+          && get(/databases/$(database)/documents/friendships/$(pid)).data.status == 'accepted'
+          && request.auth.uid in get(/databases/$(database)/documents/friendships/$(pid)).data.users;
+      }
+    }
+
+    // Приглашения друга на партию
+    match /invites/{iid} {
+      allow read: if signedIn()
+        && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.to is string
+        && request.resource.data.to != request.auth.uid;
+      allow delete: if signedIn()
+        && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      allow update: if false;
+    }
+
     match /games/{gid} {
       allow read: if true;
 

@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Analysis from './pages/Analysis';
 import Bots from './pages/Bots';
+import Friends from './pages/Friends';
 import GamePage from './pages/Game';
 import Home from './pages/Home';
 import Leaderboard from './pages/Leaderboard';
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/puzzles" element={<Puzzles />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/friends" element={<Friends />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/profile/:uid" element={<Profile />} />
           <Route path="*" element={<div className="card">Страница не найдена</div>} />

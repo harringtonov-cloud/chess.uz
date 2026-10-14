@@ -169,3 +169,7 @@ form, .form { display: flex; flex-direction: column; gap: 10px; }
 .theme-swatch.active { border-color: var(--accent); }
 .swatch-board { width: 56px; height: 56px; border-radius: 4px; display: block; }
 .check-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
+
+/* Друзья */
+.friends-page { display: grid; gap: 16px; }
+.badge { display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 12px; line-height: 18px; text-align: center; }
