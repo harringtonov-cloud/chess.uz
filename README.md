@@ -25,7 +25,7 @@ npm run dev
 
 1. [console.firebase.google.com](https://console.firebase.google.com) → **Add project**.
 2. **Build → Authentication → Sign-in method**: включите **Google** и **Email/Password**.
-3. **Authentication → Settings → Authorized domains**: добавьте домен вашего сайта на Netlify и свой домен (chess.uz).
+3. **Authentication → Settings → Authorized domains**: добавьте домен вашего сайта на Vercel и свой домен (chess.uz).
 4. **Build → Firestore Database → Create database** (режим production, ближайший регион).
 5. **Project settings → Your apps → Web app (`</>`)**: скопируйте конфиг в `.env.local` (поля `VITE_FIREBASE_*`).
 6. Опубликуйте правила и индексы:
