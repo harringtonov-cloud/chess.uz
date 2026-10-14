@@ -46,6 +46,22 @@ function defaultProfile(user: User, name?: string): Profile {
   };
 }
 
+/**
+ * Профиль в Firestore мог быть создан старой версией сайта или быть неполным.
+ * Дополняем недостающие поля значениями по умолчанию, чтобы страницы не падали.
+ */
+function normalizeProfile(data: Partial<Profile>, user: User): Profile {
+  const base = defaultProfile(user);
+  return {
+    uid: user.uid,
+    name: typeof data.name === 'string' && data.name ? data.name : base.name,
+    bio: typeof data.bio === 'string' ? data.bio : '',
+    country: typeof data.country === 'string' ? data.country : '',
+    ratings: { ...base.ratings, ...(data.ratings ?? {}) },
+    stats: { ...base.stats, ...(data.stats ?? {}) },
+  };
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -76,8 +92,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       unsubProfile = onSnapshot(ref, (s) => {
         if (!s.exists()) return;
-        const data = s.data() as Profile & { lastSeen?: { toMillis: () => number } | null };
-        setProfile({ ...data, uid: u.uid });
+        const data = s.data() as Partial<Profile> & { lastSeen?: { toMillis: () => number } | null };
+        setProfile(normalizeProfile(data, u));
         if (data.lastSeen && !s.metadata.hasPendingWrites) {
           setClockOffset(data.lastSeen.toMillis() - Date.now());
         }
