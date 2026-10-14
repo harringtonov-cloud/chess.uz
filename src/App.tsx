@@ -8,6 +8,7 @@ import Leaderboard from './pages/Leaderboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Puzzles from './pages/Puzzles';
+import SettingsPage from './pages/Settings';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/puzzles" element={<Puzzles />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/profile/:uid" element={<Profile />} />
           <Route path="*" element={<div className="card">Страница не найдена</div>} />
         </Routes>

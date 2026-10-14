@@ -20,6 +20,9 @@ export default function Navbar() {
         <NavLink to="/leaderboard">Рейтинг</NavLink>
       </nav>
       <div className="nav-right">
+        <Link className="btn small ghost" to="/settings" title="Настройки">
+          ⚙
+        </Link>
         <button
           className="btn small ghost"
           title="Звук"
