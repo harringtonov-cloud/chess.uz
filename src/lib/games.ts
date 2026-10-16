@@ -49,7 +49,7 @@ export function clocks(g: GameDoc, now: number): { white: number; black: number 
 export async function createGame(
   profile: Profile,
   tc: TimeControl,
-  opts: { private: boolean; color?: Color },
+  opts: { private: boolean; color?: Color; rated?: boolean },
 ): Promise<string> {
   const color: Color = opts.color ?? (Math.random() < 0.5 ? 'white' : 'black');
   const category = categoryOf(tc);
@@ -70,7 +70,7 @@ export async function createGame(
     base: tc.base,
     inc: tc.inc,
     category,
-    rated: !opts.private,
+    rated: opts.rated ?? !opts.private,
     private: opts.private,
     whiteTime: tc.base * 1000,
     blackTime: tc.base * 1000,
@@ -115,6 +115,7 @@ export async function seekGame(profile: Profile, tc: TimeControl): Promise<strin
     gamesCol(),
     where('status', '==', 'waiting'),
     where('private', '==', false),
+    where('rated', '==', true),
     where('base', '==', tc.base),
     where('inc', '==', tc.inc),
     limit(20),

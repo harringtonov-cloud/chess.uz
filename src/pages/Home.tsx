@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import CustomGame from '../components/CustomGame';
+import OpenGames from '../components/OpenGames';
 import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
 import { createGame, seekGame } from '../lib/games';
@@ -79,6 +81,9 @@ export default function Home() {
         ))}
         {error && <p className="error">{error}</p>}
       </section>
+
+      <CustomGame />
+      <OpenGames />
 
       <section className="card">
         <h2>Игра с другом</h2>

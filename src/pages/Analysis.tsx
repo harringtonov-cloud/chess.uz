@@ -8,6 +8,7 @@ import Board from '../components/Board';
 import MoveList from '../components/MoveList';
 import { replay, uciToSan } from '../lib/chessUtil';
 import { getEngine } from '../lib/engine';
+import { openingName } from '../lib/openings';
 import type { GameDoc } from '../lib/types';
 
 interface Ev {
@@ -188,6 +189,11 @@ export default function Analysis() {
     return result;
   }, [moves, evals]);
 
+  const opening = useMemo(
+    () => openingName(moves.map((m) => m.from + m.to + (m.promotion ?? ''))),
+    [moves],
+  );
+
   const summary = useMemo(() => {
     const side = (color: 'w' | 'b') => {
       const idx = moves.map((m, i) => (m.color === color ? i : -1)).filter((i) => i >= 0 && quality[i]);
@@ -297,6 +303,11 @@ export default function Analysis() {
 
           {moves.length > 0 && (
             <div className="card">
+              {opening && (
+                <div className="muted">
+                  Дебют: <b>{opening}</b>
+                </div>
+              )}
               <div className="summary">
                 <div>
                   <div className="muted">Белые</div>

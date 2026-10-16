@@ -8,8 +8,11 @@ import Friends from './pages/Friends';
 import GamePage from './pages/Game';
 import Home from './pages/Home';
 import Leaderboard from './pages/Leaderboard';
+import Learn from './pages/Learn';
 import Login from './pages/Login';
+import Openings from './pages/Openings';
 import Profile from './pages/Profile';
+import PuzzleRush from './pages/PuzzleRush';
 import Puzzles from './pages/Puzzles';
 import SettingsPage from './pages/Settings';
 import TournamentPage from './pages/TournamentPage';
@@ -26,6 +29,9 @@ export default function App() {
           <Route path="/game/:id" element={<GamePage />} />
           <Route path="/bots" element={<Bots />} />
           <Route path="/puzzles" element={<Puzzles />} />
+          <Route path="/rush" element={<PuzzleRush />} />
+          <Route path="/learn" element={<Learn />} />
+          <Route path="/openings" element={<Openings />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/friends" element={<Friends />} />

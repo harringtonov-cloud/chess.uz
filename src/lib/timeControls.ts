@@ -31,9 +31,23 @@ export const TIME_CONTROLS: { group: Category; items: TimeControl[] }[] = [
 ];
 
 export function tcLabel(tc: TimeControl): string {
+  if (tc.base < 60) return tc.inc ? `${tc.base}с+${tc.inc}` : `${tc.base}с`;
   const minutes = tc.base / 60;
   const base = Number.isInteger(minutes) ? String(minutes) : minutes.toFixed(1);
   return `${base}+${tc.inc}`;
+}
+
+/** Границы своей игры: от 15 секунд до 3 часов на партию, добавка до 3 минут. */
+export const CUSTOM_LIMITS = { minBase: 15, maxBase: 10800, maxInc: 180 };
+
+/** Проверяет настройки времени; возвращает текст ошибки или null. */
+export function validateTimeControl(tc: TimeControl): string | null {
+  if (!Number.isFinite(tc.base) || !Number.isFinite(tc.inc)) return 'Введите время числом';
+  if (tc.base < CUSTOM_LIMITS.minBase) return 'Минимум 15 секунд на партию';
+  if (tc.base > CUSTOM_LIMITS.maxBase) return 'Максимум 180 минут на партию';
+  if (tc.inc < 0) return 'Добавка не может быть отрицательной';
+  if (tc.inc > CUSTOM_LIMITS.maxInc) return 'Максимум 180 секунд добавки';
+  return null;
 }
 
 export function formatClock(ms: number): string {

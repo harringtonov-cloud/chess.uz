@@ -187,3 +187,27 @@ textarea { min-height: 70px; resize: vertical; }
 .pairing-row { padding: 6px 0; border-bottom: 1px solid #3a3835; flex-wrap: wrap; }
 .pairing-row:last-child { border-bottom: none; }
 .result-select { width: auto; padding: 4px 8px; font-size: 13px; }
+
+/* Своя игра */
+.custom-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 12px 0; }
+.custom-fields label { display: flex; flex-direction: column; gap: 4px; }
+.custom-game .tc-row { margin: 10px 0; }
+
+/* Уроки */
+.lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 14px; }
+.lesson-card { background: var(--panel-2); border: 2px solid transparent; border-radius: 10px; padding: 14px; color: var(--text); cursor: pointer; display: flex; flex-direction: column; gap: 6px; text-align: left; font-size: 15px; }
+.lesson-card:hover { border-color: var(--accent); }
+.lesson-text { font-size: 17px; line-height: 1.5; }
+
+/* Дебютный справочник */
+.opening-name { font-size: 20px; font-weight: 700; margin: 8px 0; color: var(--accent); }
+.continuations { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.continuation { background: var(--panel-2); border: 1px solid #44403c; border-radius: 8px; padding: 8px 12px; color: var(--text); cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; font-size: 15px; }
+.continuation:hover { border-color: var(--accent); }
+
+/* Puzzle Rush */
+.rush-clock { font-size: 44px; text-align: center; }
+.rush-score { font-size: 20px; margin: 10px 0; }
+.strikes { display: flex; gap: 10px; font-size: 28px; margin: 6px 0; }
+.strike { color: #4a4743; }
+.strike.on { color: var(--danger); }

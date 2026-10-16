@@ -1,38 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../AuthContext';
 import Board from '../components/Board';
 import { uciToMove } from '../lib/chessUtil';
+import { FALLBACK, fetchPuzzle } from '../lib/puzzleApi';
+import type { Puzzle } from '../lib/puzzleApi';
 import { expectedScore } from '../lib/elo';
 import { playSound } from '../lib/sound';
-
-interface Puzzle {
-  id: string;
-  rating: number;
-  fen: string; // позиция, в которой ходит решающий
-  solution: string[]; // UCI: ход решающего, ответ, ход решающего…
-  themes: string[];
-}
-
-// Запасные задачи на случай, если загрузить базу Lichess не удалось
-const FALLBACK: Puzzle[] = [
-  {
-    id: 'local-backrank',
-    rating: 600,
-    fen: '6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1',
-    solution: ['a1a8'],
-    themes: ['mateIn1', 'backRankMate'],
-  },
-  {
-    id: 'local-fools',
-    rating: 400,
-    fen: 'rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2',
-    solution: ['d8h4'],
-    themes: ['mateIn1'],
-  },
-];
 
 const THEME_RU: Record<string, string> = {
   mateIn1: 'Мат в 1 ход',
@@ -62,24 +39,6 @@ const THEME_RU: Record<string, string> = {
   trappedPiece: 'Пойманная фигура',
   zugzwang: 'Цугцванг',
 };
-
-async function fetchPuzzle(): Promise<Puzzle> {
-  const res = await fetch('https://lichess.org/api/puzzle/next', { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
-  const chess = new Chess();
-  chess.loadPgn(data.game.pgn);
-  const solution: string[] = data.puzzle.solution;
-  // проверка: первый ход решения должен быть легальным в этой позиции
-  new Chess(chess.fen()).move(uciToMove(solution[0]));
-  return {
-    id: data.puzzle.id,
-    rating: data.puzzle.rating,
-    fen: chess.fen(),
-    solution,
-    themes: data.puzzle.themes ?? [],
-  };
-}
 
 export default function Puzzles() {
   const { profile, user } = useAuth();
@@ -221,6 +180,7 @@ export default function Puzzles() {
       <div className="side-col">
         <div className="card">
           <h3>Головоломки</h3>
+          <Link className="btn small" to="/rush">⚡ Puzzle Rush на время</Link>
           {profile && <div className="muted">Ваш рейтинг задач: <b>{profile.ratings.puzzle}</b></div>}
           {puzzle && (
             <div className="muted">
