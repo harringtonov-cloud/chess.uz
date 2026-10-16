@@ -2,12 +2,18 @@ import { Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Analysis from './pages/Analysis';
 import Bots from './pages/Bots';
+import ClubPage from './pages/ClubPage';
+import Clubs from './pages/Clubs';
+import Friends from './pages/Friends';
 import GamePage from './pages/Game';
 import Home from './pages/Home';
 import Leaderboard from './pages/Leaderboard';
 import Login from './pages/Login';
 import Profile from './pages/Profile';
 import Puzzles from './pages/Puzzles';
+import SettingsPage from './pages/Settings';
+import TournamentPage from './pages/TournamentPage';
+import Tournaments from './pages/Tournaments';
 
 export default function App() {
   return (
@@ -22,6 +28,12 @@ export default function App() {
           <Route path="/puzzles" element={<Puzzles />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/friends" element={<Friends />} />
+          <Route path="/clubs" element={<Clubs />} />
+          <Route path="/tournaments" element={<Tournaments />} />
+          <Route path="/tournament/:id" element={<TournamentPage />} />
+          <Route path="/club/:id" element={<ClubPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/profile/:uid" element={<Profile />} />
           <Route path="*" element={<div className="card">Страница не найдена</div>} />
         </Routes>

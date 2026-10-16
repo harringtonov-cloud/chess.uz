@@ -158,3 +158,32 @@ form, .form { display: flex; flex-direction: column; gap: 10px; }
 .q-inaccuracy { color: #f0c040; }
 .q-mistake { color: #f08a30; }
 .q-blunder { color: var(--danger); }
+
+/* Настройки и векторные фигуры */
+.piece.svg { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-shadow: none; }
+.piece.svg svg { display: block; }
+.promo .piece.svg { padding: 4px; }
+.settings-page { display: grid; gap: 16px; }
+.settings-page .board { margin: 0 auto; }
+.theme-swatch { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 10px; background: var(--panel-2); color: var(--text); border: 2px solid transparent; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.theme-swatch.active { border-color: var(--accent); }
+.swatch-board { width: 56px; height: 56px; border-radius: 4px; display: block; }
+.check-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; cursor: pointer; }
+
+/* Друзья */
+.friends-page { display: grid; gap: 16px; }
+.badge { display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 12px; line-height: 18px; text-align: center; }
+
+/* Клубы */
+.clubs-page, .club-page { display: grid; gap: 16px; }
+.club-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #3a3835; }
+.club-row:last-child { border-bottom: none; }
+.club-desc { margin-top: 4px; font-size: 14px; }
+.club-chat { height: 260px; }
+.club-chat .btn.ghost { padding: 0 6px; margin-left: 4px; }
+textarea { min-height: 70px; resize: vertical; }
+
+/* Турниры */
+.pairing-row { padding: 6px 0; border-bottom: 1px solid #3a3835; flex-wrap: wrap; }
+.pairing-row:last-child { border-bottom: none; }
+.result-select { width: auto; padding: 4px 8px; font-size: 13px; }

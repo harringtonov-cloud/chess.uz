@@ -3,10 +3,15 @@ import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
 import { setSoundEnabled, soundEnabled } from '../lib/sound';
 import { useState } from 'react';
+import { useFriendships, useInvites } from '../lib/social';
 
 export default function Navbar() {
   const { profile, user, logout } = useAuth();
   const [sound, setSound] = useState(soundEnabled());
+  const friendships = useFriendships(profile?.uid);
+  const invites = useInvites(profile?.uid);
+  const pending =
+    friendships.filter((f) => f.status === 'pending' && f.requester !== profile?.uid).length + invites.length;
   return (
     <header className="navbar">
       <Link to="/" className="logo">
@@ -18,8 +23,18 @@ export default function Navbar() {
         <NavLink to="/puzzles">Головоломки</NavLink>
         <NavLink to="/analysis">Анализ</NavLink>
         <NavLink to="/leaderboard">Рейтинг</NavLink>
+        {firebaseConfigured && <NavLink to="/tournaments">Турниры</NavLink>}
+        {firebaseConfigured && <NavLink to="/clubs">Клубы</NavLink>}
+        {firebaseConfigured && user && (
+          <NavLink to="/friends">
+            Друзья{pending > 0 && <span className="badge">{pending}</span>}
+          </NavLink>
+        )}
       </nav>
       <div className="nav-right">
+        <Link className="btn small ghost" to="/settings" title="Настройки">
+          ⚙
+        </Link>
         <button
           className="btn small ghost"
           title="Звук"

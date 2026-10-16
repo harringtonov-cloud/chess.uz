@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import type { Promo } from '../lib/chessUtil';
+import { useSettings } from '../lib/settings';
+import PieceIcon from './PieceIcon';
 
 const GLYPH: Record<string, string> = {
   k: '♚︎',
@@ -33,6 +35,8 @@ export default function Board({
   hint,
   onMove,
 }: BoardProps) {
+  const settings = useSettings();
+  const useSvg = settings.pieceSet === 'svg';
   const chess = useMemo(() => new Chess(fen), [fen]);
   const [selected, setSelected] = useState<Square | null>(null);
   const [pendingPromo, setPendingPromo] = useState<{ from: Square; to: Square } | null>(null);
@@ -93,7 +97,7 @@ export default function Board({
           const sq = `${FILES[f]}${8 - r}` as Square;
           const cell = board[r][f];
           const dark = (f + (7 - r)) % 2 === 0;
-          const isLast = lastMove && (lastMove.from === sq || lastMove.to === sq);
+          const isLast = settings.highlights && lastMove && (lastMove.from === sq || lastMove.to === sq);
           const isHint = hint && (hint.from === sq || hint.to === sq);
           const target = targets.has(sq);
           const cls = [
@@ -101,7 +105,7 @@ export default function Board({
             dark ? 'dark' : 'light',
             isLast ? 'last' : '',
             isHint ? 'hint' : '',
-            selected === sq ? 'selected' : '',
+            settings.highlights && selected === sq ? 'selected' : '',
             checkSquare === sq ? 'check' : '',
           ]
             .filter(Boolean)
@@ -118,12 +122,12 @@ export default function Board({
                 if (from) tryMove(from, sq);
               }}
             >
-              {fi === 0 && <span className="coord rank">{8 - r}</span>}
-              {ri === 7 && <span className="coord file">{FILES[f]}</span>}
+              {settings.coords && fi === 0 && <span className="coord rank">{8 - r}</span>}
+              {settings.coords && ri === 7 && <span className="coord file">{FILES[f]}</span>}
               {target && <span className={targets.get(sq) ? 'dot capture' : 'dot'} />}
               {cell && (
                 <span
-                  className={`piece ${cell.color === 'w' ? 'white' : 'black'}`}
+                  className={`piece ${cell.color === 'w' ? 'white' : 'black'}${useSvg ? ' svg' : ''}`}
                   draggable={canMove && cell.color === turn}
                   onDragStart={(e) => {
                     if (!canMove || cell.color !== turn) return;
@@ -132,7 +136,7 @@ export default function Board({
                     setSelected(sq);
                   }}
                 >
-                  {GLYPH[cell.type]}
+                  {useSvg ? <PieceIcon type={cell.type} color={cell.color} /> : GLYPH[cell.type]}
                 </span>
               )}
             </div>
@@ -145,13 +149,13 @@ export default function Board({
             {(['q', 'r', 'b', 'n'] as Promo[]).map((p) => (
               <button
                 key={p}
-                className={`piece ${turn === 'w' ? 'white' : 'black'}`}
+                className={`piece ${turn === 'w' ? 'white' : 'black'}${useSvg ? ' svg' : ''}`}
                 onClick={() => {
                   onMove?.(pendingPromo.from, pendingPromo.to, p);
                   setPendingPromo(null);
                 }}
               >
-                {GLYPH[p]}
+                {useSvg ? <PieceIcon type={p} color={turn} /> : GLYPH[p]}
               </button>
             ))}
           </div>

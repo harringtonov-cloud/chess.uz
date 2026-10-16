@@ -12,6 +12,212 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Дружба: один документ на пару игроков, id = uid-ы по алфавиту через «_»
+    match /friendships/{pid} {
+      allow read: if signedIn() && request.auth.uid in resource.data.users;
+
+      // Запрос отправляет сам инициатор, статус всегда «pending»
+      allow create: if signedIn()
+        && request.resource.data.users.size() == 2
+        && request.auth.uid in request.resource.data.users
+        && request.resource.data.requester == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && (pid == request.resource.data.users[0] + '_' + request.resource.data.users[1]
+            || pid == request.resource.data.users[1] + '_' + request.resource.data.users[0]);
+
+      // Принять запрос может только получатель; менять другие поля нельзя
+      allow update: if signedIn()
+        && request.auth.uid in resource.data.users
+        && resource.data.status == 'pending'
+        && resource.data.requester != request.auth.uid
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.users == resource.data.users
+        && request.resource.data.requester == resource.data.requester;
+
+      // Отклонить, отменить или удалить из друзей может любой из двоих
+      allow delete: if signedIn() && request.auth.uid in resource.data.users;
+
+      // Личные сообщения — только между подтверждёнными друзьями
+      match /messages/{mid} {
+        allow read: if signedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/friendships/$(pid)).data.users;
+        allow create: if signedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() <= 300
+          && get(/databases/$(database)/documents/friendships/$(pid)).data.status == 'accepted'
+          && request.auth.uid in get(/databases/$(database)/documents/friendships/$(pid)).data.users;
+      }
+    }
+
+    // ---------- Клубы ----------
+    function clubDoc(cid) {
+      return /databases/$(database)/documents/clubs/$(cid);
+    }
+    function clubMemberPath(cid, uid) {
+      return /databases/$(database)/documents/clubs/$(cid)/members/$(uid);
+    }
+    function clubRole(cid) {
+      return signedIn() && exists(clubMemberPath(cid, request.auth.uid))
+        ? get(clubMemberPath(cid, request.auth.uid)).data.role
+        : 'none';
+    }
+    function isClubMember(cid) {
+      return clubRole(cid) in ['owner', 'admin', 'member'];
+    }
+    function isClubAdmin(cid) {
+      return clubRole(cid) in ['owner', 'admin'];
+    }
+    function validClub(d) {
+      return d.name is string && d.name.size() >= 3 && d.name.size() <= 40
+        && d.description is string && d.description.size() <= 300
+        && d.isOpen is bool;
+    }
+
+    match /clubs/{cid} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && validClub(request.resource.data);
+      // Менять название, описание и тип клуба может только владелец
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && validClub(request.resource.data);
+      allow delete: if false;
+
+      match /members/{mid} {
+        allow read: if signedIn();
+
+        // Вступить в открытый клуб, подать заявку в закрытый, либо создать клуб (запись владельца)
+        allow create: if signedIn()
+          && mid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 24
+          && (
+            (request.resource.data.role == 'owner'
+              && getAfter(clubDoc(cid)).data.ownerId == request.auth.uid)
+            || (request.resource.data.role == 'member'
+              && exists(clubDoc(cid)) && get(clubDoc(cid)).data.isOpen == true)
+            || (request.resource.data.role == 'pending'
+              && exists(clubDoc(cid)) && get(clubDoc(cid)).data.isOpen == false)
+          );
+
+        // Одобрить заявку может админ; назначить или снять админа — только владелец
+        allow update: if signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+          && (
+            (isClubAdmin(cid) && resource.data.role == 'pending' && request.resource.data.role == 'member')
+            || (clubRole(cid) == 'owner'
+              && resource.data.role in ['member', 'admin']
+              && request.resource.data.role in ['member', 'admin'])
+          );
+
+        // Выйти (или отозвать заявку) может сам участник, кроме владельца; исключать — админы
+        allow delete: if signedIn() && (
+          (mid == request.auth.uid && resource.data.role != 'owner')
+          || (isClubAdmin(cid) && resource.data.role in ['member', 'pending'])
+          || (clubRole(cid) == 'owner' && resource.data.role == 'admin')
+        );
+      }
+
+      match /messages/{mid} {
+        allow read: if isClubMember(cid);
+        allow create: if isClubMember(cid)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 300;
+        allow delete: if isClubAdmin(cid);
+      }
+    }
+
+    // ---------- Турниры (швейцарская система) ----------
+    function tournamentDoc(tid) {
+      return /databases/$(database)/documents/tournaments/$(tid);
+    }
+    function isOrganizer(tid) {
+      return signedIn() && get(tournamentDoc(tid)).data.organizerId == request.auth.uid;
+    }
+
+    match /tournaments/{tid} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.organizerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 50
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 300
+        && request.resource.data.base is int && request.resource.data.base >= 30 && request.resource.data.base <= 10800
+        && request.resource.data.inc is int && request.resource.data.inc >= 0 && request.resource.data.inc <= 180
+        && request.resource.data.rounds is int && request.resource.data.rounds >= 1 && request.resource.data.rounds <= 9
+        && request.resource.data.maxPlayers is int && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 64
+        && request.resource.data.status == 'registration'
+        && request.resource.data.currentRound == 0;
+      // Менять турнир (старт, следующий тур, завершение) может только организатор
+      allow update: if signedIn()
+        && resource.data.organizerId == request.auth.uid
+        && request.resource.data.organizerId == resource.data.organizerId;
+      allow delete: if false;
+
+      match /players/{pid} {
+        allow read: if true;
+        // Записаться можно только пока идёт регистрация
+        allow create: if signedIn()
+          && pid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 24
+          && get(tournamentDoc(tid)).data.status == 'registration';
+        allow delete: if signedIn() && (
+          (pid == request.auth.uid && get(tournamentDoc(tid)).data.status == 'registration')
+          || isOrganizer(tid)
+        );
+      }
+
+      match /pairings/{pairId} {
+        allow read: if true;
+        // Жеребьёвку создаёт только организатор
+        allow create: if isOrganizer(tid);
+        allow update: if signedIn() && (
+          // организатор может проставить результат вручную (неявка, отмена партии) или прикрепить партию
+          (isOrganizer(tid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['result', 'gameId']))
+          // игрок за белых прикрепляет созданную им партию
+          || (request.auth.uid == resource.data.white
+            && resource.data.gameId == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gameId'])
+            && request.resource.data.gameId is string
+            && exists(/databases/$(database)/documents/games/$(request.resource.data.gameId))
+            && get(/databases/$(database)/documents/games/$(request.resource.data.gameId)).data.white == resource.data.white)
+          // участник записывает результат, только если такая же закончившаяся партия есть в базе
+          || (request.auth.uid in [resource.data.white, resource.data.black]
+            && resource.data.result == null
+            && resource.data.gameId != null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['result'])
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished'
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.white == resource.data.white
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.black == resource.data.black
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.result == request.resource.data.result)
+        );
+        allow delete: if false;
+      }
+    }
+
+    // Приглашения друга на партию
+    match /invites/{iid} {
+      allow read: if signedIn()
+        && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.to is string
+        && request.resource.data.to != request.auth.uid;
+      allow delete: if signedIn()
+        && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+      allow update: if false;
+    }
+
     match /games/{gid} {
       allow read: if true;
 
