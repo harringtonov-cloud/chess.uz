@@ -50,6 +50,89 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Клубы ----------
+    function clubDoc(cid) {
+      return /databases/$(database)/documents/clubs/$(cid);
+    }
+    function clubMemberPath(cid, uid) {
+      return /databases/$(database)/documents/clubs/$(cid)/members/$(uid);
+    }
+    function clubRole(cid) {
+      return signedIn() && exists(clubMemberPath(cid, request.auth.uid))
+        ? get(clubMemberPath(cid, request.auth.uid)).data.role
+        : 'none';
+    }
+    function isClubMember(cid) {
+      return clubRole(cid) in ['owner', 'admin', 'member'];
+    }
+    function isClubAdmin(cid) {
+      return clubRole(cid) in ['owner', 'admin'];
+    }
+    function validClub(d) {
+      return d.name is string && d.name.size() >= 3 && d.name.size() <= 40
+        && d.description is string && d.description.size() <= 300
+        && d.isOpen is bool;
+    }
+
+    match /clubs/{cid} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && validClub(request.resource.data);
+      // Менять название, описание и тип клуба может только владелец
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && validClub(request.resource.data);
+      allow delete: if false;
+
+      match /members/{mid} {
+        allow read: if signedIn();
+
+        // Вступить в открытый клуб, подать заявку в закрытый, либо создать клуб (запись владельца)
+        allow create: if signedIn()
+          && mid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 24
+          && (
+            (request.resource.data.role == 'owner'
+              && getAfter(clubDoc(cid)).data.ownerId == request.auth.uid)
+            || (request.resource.data.role == 'member'
+              && exists(clubDoc(cid)) && get(clubDoc(cid)).data.isOpen == true)
+            || (request.resource.data.role == 'pending'
+              && exists(clubDoc(cid)) && get(clubDoc(cid)).data.isOpen == false)
+          );
+
+        // Одобрить заявку может админ; назначить или снять админа — только владелец
+        allow update: if signedIn()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])
+          && (
+            (isClubAdmin(cid) && resource.data.role == 'pending' && request.resource.data.role == 'member')
+            || (clubRole(cid) == 'owner'
+              && resource.data.role in ['member', 'admin']
+              && request.resource.data.role in ['member', 'admin'])
+          );
+
+        // Выйти (или отозвать заявку) может сам участник, кроме владельца; исключать — админы
+        allow delete: if signedIn() && (
+          (mid == request.auth.uid && resource.data.role != 'owner')
+          || (isClubAdmin(cid) && resource.data.role in ['member', 'pending'])
+          || (clubRole(cid) == 'owner' && resource.data.role == 'admin')
+        );
+      }
+
+      match /messages/{mid} {
+        allow read: if isClubMember(cid);
+        allow create: if isClubMember(cid)
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 300;
+        allow delete: if isClubAdmin(cid);
+      }
+    }
+
     // Приглашения друга на партию
     match /invites/{iid} {
       allow read: if signedIn()

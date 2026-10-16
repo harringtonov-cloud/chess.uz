@@ -173,3 +173,12 @@ form, .form { display: flex; flex-direction: column; gap: 10px; }
 /* Друзья */
 .friends-page { display: grid; gap: 16px; }
 .badge { display: inline-block; margin-left: 6px; min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--danger); color: #fff; font-size: 12px; line-height: 18px; text-align: center; }
+
+/* Клубы */
+.clubs-page, .club-page { display: grid; gap: 16px; }
+.club-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #3a3835; }
+.club-row:last-child { border-bottom: none; }
+.club-desc { margin-top: 4px; font-size: 14px; }
+.club-chat { height: 260px; }
+.club-chat .btn.ghost { padding: 0 6px; margin-left: 4px; }
+textarea { min-height: 70px; resize: vertical; }
