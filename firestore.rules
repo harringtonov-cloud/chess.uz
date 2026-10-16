@@ -133,6 +133,78 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Турниры (швейцарская система) ----------
+    function tournamentDoc(tid) {
+      return /databases/$(database)/documents/tournaments/$(tid);
+    }
+    function isOrganizer(tid) {
+      return signedIn() && get(tournamentDoc(tid)).data.organizerId == request.auth.uid;
+    }
+
+    match /tournaments/{tid} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.organizerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 50
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 300
+        && request.resource.data.base is int && request.resource.data.base >= 30 && request.resource.data.base <= 10800
+        && request.resource.data.inc is int && request.resource.data.inc >= 0 && request.resource.data.inc <= 180
+        && request.resource.data.rounds is int && request.resource.data.rounds >= 1 && request.resource.data.rounds <= 9
+        && request.resource.data.maxPlayers is int && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 64
+        && request.resource.data.status == 'registration'
+        && request.resource.data.currentRound == 0;
+      // Менять турнир (старт, следующий тур, завершение) может только организатор
+      allow update: if signedIn()
+        && resource.data.organizerId == request.auth.uid
+        && request.resource.data.organizerId == resource.data.organizerId;
+      allow delete: if false;
+
+      match /players/{pid} {
+        allow read: if true;
+        // Записаться можно только пока идёт регистрация
+        allow create: if signedIn()
+          && pid == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 24
+          && get(tournamentDoc(tid)).data.status == 'registration';
+        allow delete: if signedIn() && (
+          (pid == request.auth.uid && get(tournamentDoc(tid)).data.status == 'registration')
+          || isOrganizer(tid)
+        );
+      }
+
+      match /pairings/{pairId} {
+        allow read: if true;
+        // Жеребьёвку создаёт только организатор
+        allow create: if isOrganizer(tid);
+        allow update: if signedIn() && (
+          // организатор может проставить результат вручную (неявка, отмена партии) или прикрепить партию
+          (isOrganizer(tid)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['result', 'gameId']))
+          // игрок за белых прикрепляет созданную им партию
+          || (request.auth.uid == resource.data.white
+            && resource.data.gameId == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['gameId'])
+            && request.resource.data.gameId is string
+            && exists(/databases/$(database)/documents/games/$(request.resource.data.gameId))
+            && get(/databases/$(database)/documents/games/$(request.resource.data.gameId)).data.white == resource.data.white)
+          // участник записывает результат, только если такая же закончившаяся партия есть в базе
+          || (request.auth.uid in [resource.data.white, resource.data.black]
+            && resource.data.result == null
+            && resource.data.gameId != null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['result'])
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.status == 'finished'
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.white == resource.data.white
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.black == resource.data.black
+            && get(/databases/$(database)/documents/games/$(resource.data.gameId)).data.result == request.resource.data.result)
+        );
+        allow delete: if false;
+      }
+    }
+
     // Приглашения друга на партию
     match /invites/{iid} {
       allow read: if signedIn()

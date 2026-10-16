@@ -182,3 +182,8 @@ form, .form { display: flex; flex-direction: column; gap: 10px; }
 .club-chat { height: 260px; }
 .club-chat .btn.ghost { padding: 0 6px; margin-left: 4px; }
 textarea { min-height: 70px; resize: vertical; }
+
+/* Турниры */
+.pairing-row { padding: 6px 0; border-bottom: 1px solid #3a3835; flex-wrap: wrap; }
+.pairing-row:last-child { border-bottom: none; }
+.result-select { width: auto; padding: 4px 8px; font-size: 13px; }
