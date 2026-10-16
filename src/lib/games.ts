@@ -76,6 +76,7 @@ export async function createGame(
     blackTime: tc.base * 1000,
     lastMoveAt: null,
     drawOffer: null,
+    takebackOffer: null,
     rematchOffer: null,
     rematch: null,
     ratingApplied: {},
@@ -185,6 +186,7 @@ export async function makeMove(
       [timeKey]: time,
       lastMoveAt: serverTimestamp(),
       drawOffer: null,
+      takebackOffer: null,
     };
     const over = gameOverInfo(chess);
     if (over) {
@@ -259,6 +261,55 @@ export function acceptDraw(id: string, uid: string) {
   });
 }
 
+/** Можно ли просить вернуть ход: свой последний ход или (если соперник уже ответил) свой ход вместе с ответом. */
+export function canRequestTakeback(g: GameDoc, color: Color): boolean {
+  if (g.status !== 'active' || g.moves.length === 0) return false;
+  const lastMover: Color = g.moves.length % 2 === 1 ? 'white' : 'black';
+  return lastMover === color || g.moves.length >= 2;
+}
+
+export function offerTakeback(id: string, color: Color) {
+  return updateDoc(doc(db, 'games', id), { takebackOffer: color });
+}
+
+export function declineTakeback(id: string) {
+  return updateDoc(doc(db, 'games', id), { takebackOffer: null });
+}
+
+/**
+ * Соперник согласился: убираем последний ход попросившего (и ответный ход, если он уже сделан).
+ * Время, потраченное на отменённые ходы, не возвращается — часы продолжают идти с текущих значений.
+ */
+export async function acceptTakeback(id: string, uid: string, now: number): Promise<void> {
+  const ref = doc(db, 'games', id);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) return;
+    const g = snap.data() as GameDoc;
+    const color = colorOf(g, uid);
+    const asker = g.takebackOffer;
+    if (g.status !== 'active' || !color || !asker || asker === color) return;
+    if (!canRequestTakeback(g, asker)) return;
+    const lastMover: Color = g.moves.length % 2 === 1 ? 'white' : 'black';
+    const drop = lastMover === asker ? 1 : 2;
+    const moves = g.moves.slice(0, g.moves.length - drop);
+    const chess = replay(moves);
+    const hist = chess.history({ verbose: true });
+    const last = hist.length ? hist[hist.length - 1] : null;
+    const c = clocks(g, now);
+    tx.update(ref, {
+      moves,
+      fen: chess.fen(),
+      lastMove: last ? { from: last.from, to: last.to } : null,
+      whiteTime: c.white,
+      blackTime: c.black,
+      lastMoveAt: serverTimestamp(),
+      takebackOffer: null,
+      drawOffer: null,
+    });
+  });
+}
+
 /** Реванш: первый игрок предлагает, второй принимает и партия создаётся с обмененными цветами. */
 export async function requestRematch(id: string, uid: string): Promise<string | null> {
   const ref = doc(db, 'games', id);
@@ -294,6 +345,7 @@ export async function requestRematch(id: string, uid: string): Promise<string | 
         blackTime: g.base * 1000,
         lastMoveAt: serverTimestamp(),
         drawOffer: null,
+        takebackOffer: null,
         rematchOffer: null,
         rematch: null,
         ratingApplied: {},

@@ -48,6 +48,8 @@ export interface GameDoc {
   blackTime: number;
   lastMoveAt: { toMillis: () => number } | null;
   drawOffer: Color | null;
+  /** Кто просит вернуть ход (у старых партий поля может не быть). */
+  takebackOffer?: Color | null;
   rematchOffer: Color | null;
   rematch: string | null;
   ratingApplied: Record<string, boolean>;

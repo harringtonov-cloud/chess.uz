@@ -20,6 +20,8 @@ export default function Bots() {
   const [moves, setMoves] = useState<string[]>([]);
   const [thinking, setThinking] = useState(false);
   const [resigned, setResigned] = useState(false);
+  const [drawn, setDrawn] = useState(false);
+  const [drawMsg, setDrawMsg] = useState('');
   const [hint, setHint] = useState<{ from: string; to: string } | null>(null);
   const [hintText, setHintText] = useState('');
   const [error, setError] = useState('');
@@ -28,7 +30,7 @@ export default function Bots() {
 
   const chess = useMemo(() => replay(moves), [moves]);
   const over = useMemo(() => gameOverInfo(chess), [chess]);
-  const finished = over !== null || resigned;
+  const finished = over !== null || resigned || drawn;
   const humanToMove = (chess.turn() === 'w') === (human === 'white');
   const botToMove = started && !finished && !humanToMove;
 
@@ -73,6 +75,8 @@ export default function Bots() {
     setFlipped(false);
     setMoves([]);
     setResigned(false);
+    setDrawn(false);
+    setDrawMsg('');
     setHint(null);
     setHintText('');
     setError('');
@@ -107,11 +111,39 @@ export default function Bots() {
   }
 
   function undo() {
-    if (thinking || moves.length === 0) return;
+    if (thinking || moves.length === 0 || resigned || drawn) return;
     const drop = humanToMove ? 2 : 1;
     setMoves(moves.slice(0, Math.max(0, moves.length - drop)));
     setHint(null);
     setHintText('');
+    setDrawMsg('');
+  }
+
+  /** Предложение ничьей: бот соглашается, если по оценке движка у него не лучше равной позиции. */
+  async function offerDraw() {
+    if (thinking || finished || !humanToMove) return;
+    setError('');
+    setDrawMsg('');
+    if (moves.length < 20) {
+      setDrawMsg(`${bot.name} отказывается: ещё слишком рано для ничьей`);
+      return;
+    }
+    setThinking(true);
+    try {
+      const res = await getEngine().search(chess.fen(), { depth: 12, skill: 20 });
+      const line = res.lines[0];
+      // cp — с точки зрения стороны, которая ходит (то есть игрока); для бота знак обратный
+      const botScore = line?.mate != null ? (line.mate > 0 ? -10000 : 10000) : -(line?.cp ?? 0);
+      if (botScore <= 30) {
+        setDrawn(true);
+      } else {
+        setDrawMsg(`${bot.name} отказывается от ничьей: считает, что стоит лучше`);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setThinking(false);
+    }
   }
 
   if (!started) {
@@ -153,7 +185,9 @@ export default function Bots() {
 
   const result = resigned
     ? 'Вы сдались'
-    : over
+    : drawn
+      ? 'Ничья по соглашению'
+      : over
       ? resultText(over.result, over.reason)
       : null;
 
@@ -181,10 +215,14 @@ export default function Bots() {
           <MoveList moves={moves} current={moves.length} />
           <div className="row wrap actions">
             <button className="btn" disabled={finished || thinking || !humanToMove} onClick={showHint}>💡 Подсказка</button>
-            <button className="btn" disabled={thinking || moves.length === 0} onClick={undo}>↩ Отменить ход</button>
+            <button className="btn" disabled={thinking || moves.length === 0 || resigned || drawn} onClick={undo}>↩ Вернуть ход</button>
             <button className="btn" onClick={() => setFlipped((f) => !f)}>🔄</button>
+            {!finished && (
+              <button className="btn" disabled={thinking || !humanToMove} onClick={offerDraw}>½ Ничья</button>
+            )}
             {!finished && <button className="btn" onClick={() => window.confirm('Сдаться?') && setResigned(true)}>🏳 Сдаться</button>}
           </div>
+          {drawMsg && <p className="muted">{drawMsg}</p>}
           {hintText && <p>Подсказка: <b>{hintText}</b></p>}
           {error && <p className="error">{error}</p>}
           <div className="row wrap actions">

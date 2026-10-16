@@ -11,16 +11,20 @@ import { replay, resultText } from '../lib/chessUtil';
 import {
   abortGame,
   acceptDraw,
+  acceptTakeback,
   applyRating,
+  canRequestTakeback,
   cancelWaiting,
   clocks,
   colorOf,
   declineDraw,
+  declineTakeback,
   flagGame,
   heartbeat,
   joinGame,
   makeMove,
   offerDraw,
+  offerTakeback,
   requestRematch,
   resign,
 } from '../lib/games';
@@ -289,6 +293,27 @@ export default function GamePage() {
               ) : (
                 game.moves.length >= 2 && (
                   <button className="btn" onClick={() => run(() => offerDraw(id, myColor))}>½ Ничья</button>
+                )
+              )}
+              {game.takebackOffer === oppColor ? (
+                <>
+                  <span>Соперник просит вернуть ход</span>
+                  <button
+                    className="btn primary"
+                    onClick={() => run(() => acceptTakeback(id, user!.uid, Date.now() + clockOffset))}
+                  >
+                    Разрешить
+                  </button>
+                  <button className="btn" onClick={() => run(() => declineTakeback(id))}>Отказать</button>
+                </>
+              ) : game.takebackOffer === myColor ? (
+                <>
+                  <span className="muted">Просьба вернуть ход отправлена…</span>
+                  <button className="btn small" onClick={() => run(() => declineTakeback(id))}>Отмена</button>
+                </>
+              ) : (
+                canRequestTakeback(game, myColor) && (
+                  <button className="btn" onClick={() => run(() => offerTakeback(id, myColor))}>↩ Вернуть ход</button>
                 )
               )}
             </div>
