@@ -18,3 +18,56 @@ export const BOTS: Bot[] = [
   { id: 'kamila', name: 'Камила', avatar: '🦅', elo: 2400, skill: 18, depth: 12, movetime: 1000, blurb: 'Уровень мастера.' },
   { id: 'ulugbek', name: 'Улугбек', avatar: '🔭', elo: 2800, skill: 20, depth: 16, movetime: 1500, blurb: 'Почти полная сила движка.' },
 ];
+
+export type Odds = 'none' | 'pawn' | 'knight' | 'rook' | 'queen' | 'queen-rook';
+
+export const ODDS_LABEL: Record<Odds, string> = {
+  none: 'Без форы',
+  pawn: 'Бот без пешки f',
+  knight: 'Бот без коня',
+  rook: 'Бот без ладьи',
+  queen: 'Бот без ферзя',
+  'queen-rook': 'Бот без ферзя и ладьи',
+};
+
+/** Начальная позиция, в которой боту (его цвет — botColor) не хватает фигур. Ход белых. */
+export function oddsFen(botColor: 'white' | 'black', odds: Odds): string {
+  const rows: string[][] = [
+    'rnbqkbnr'.split(''),
+    'pppppppp'.split(''),
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    ['', '', '', '', '', '', '', ''],
+    'PPPPPPPP'.split(''),
+    'RNBQKBNR'.split(''),
+  ];
+  const back = botColor === 'black' ? 0 : 7;
+  const pawns = botColor === 'black' ? 1 : 6;
+  let castling = 'KQkq';
+  const dropRook = () => {
+    rows[back][0] = '';
+    castling = castling.replace(botColor === 'black' ? 'q' : 'Q', '');
+  };
+  if (odds === 'pawn') rows[pawns][5] = '';
+  if (odds === 'knight') rows[back][1] = '';
+  if (odds === 'rook' || odds === 'queen-rook') dropRook();
+  if (odds === 'queen' || odds === 'queen-rook') rows[back][3] = '';
+  const placement = rows
+    .map((row) => {
+      let out = '';
+      let empty = 0;
+      for (const cell of row) {
+        if (cell === '') {
+          empty += 1;
+        } else {
+          if (empty) out += String(empty);
+          empty = 0;
+          out += cell;
+        }
+      }
+      return out + (empty ? String(empty) : '');
+    })
+    .join('/');
+  return `${placement} w ${castling || '-'} - 0 1`;
+}

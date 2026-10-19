@@ -10,6 +10,13 @@ export function replay(moves: string[]): Chess {
   return chess;
 }
 
+/** Воспроизводит партию, начатую с заданной позиции (null — обычная начальная). */
+export function replayFrom(startFen: string | null, moves: string[]): Chess {
+  const chess = startFen ? new Chess(startFen) : new Chess();
+  for (const m of moves) chess.move(m);
+  return chess;
+}
+
 export function gameOverInfo(chess: Chess): { result: '1-0' | '0-1' | '1/2-1/2'; reason: string } | null {
   if (chess.isCheckmate()) {
     // ходит проигравший
