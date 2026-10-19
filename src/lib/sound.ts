@@ -20,7 +20,7 @@ function tone(freq: number, duration: number, volume = 0.08, type: OscillatorTyp
   }
 }
 
-export type SoundKind = 'move' | 'capture' | 'check' | 'end' | 'wrong' | 'correct';
+export type SoundKind = 'move' | 'capture' | 'check' | 'end' | 'wrong' | 'correct' | 'notify';
 
 export function playSound(kind: SoundKind) {
   switch (kind) {
@@ -43,6 +43,10 @@ export function playSound(kind: SoundKind) {
     case 'correct':
       tone(600, 0.12, 0.08);
       setTimeout(() => tone(800, 0.15, 0.08), 100);
+      break;
+    case 'notify':
+      tone(880, 0.1, 0.06, 'sine');
+      setTimeout(() => tone(1175, 0.18, 0.06, 'sine'), 110);
       break;
   }
 }

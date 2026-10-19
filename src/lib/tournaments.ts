@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db, firebaseConfigured } from '../firebase';
 import { createGame } from './games';
+import { notify } from './notifications';
 import { pairRound } from './swiss';
 import type { PairResult, SwissPlayer } from './swiss';
 import { categoryOf } from './timeControls';
@@ -120,6 +121,38 @@ export async function startRound(t: Tournament, players: SwissPlayer[], previous
   });
   batch.update(doc(db, 'tournaments', t.id), { status: 'running', currentRound: round });
   await batch.commit();
+
+  // Сообщаем игрокам о паре; ошибки отправки не должны ломать жеребьёвку.
+  const organizer = { uid: t.organizerId, name: t.organizerName };
+  for (const p of pairs) {
+    const link = `/tournament/${t.id}`;
+    if (!p.black) {
+      void notify(p.white, organizer, {
+        kind: 'tournament_round',
+        title: `${t.name}: тур ${round}`,
+        body: 'В этом туре у вас свободный круг (1 очко).',
+        link,
+        ref: t.id,
+      });
+      continue;
+    }
+    const white = byUid.get(p.white)?.name ?? '';
+    const black = byUid.get(p.black)?.name ?? '';
+    void notify(p.white, organizer, {
+      kind: 'tournament_round',
+      title: `${t.name}: тур ${round}`,
+      body: `Вы играете белыми против ${black}.`,
+      link,
+      ref: t.id,
+    });
+    void notify(p.black, organizer, {
+      kind: 'tournament_round',
+      title: `${t.name}: тур ${round}`,
+      body: `Вы играете чёрными против ${white}.`,
+      link,
+      ref: t.id,
+    });
+  }
 }
 
 export function finishTournament(tid: string) {

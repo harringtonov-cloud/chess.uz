@@ -5,7 +5,16 @@ import { db, firebaseConfigured } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { resultText } from '../lib/chessUtil';
 import { CATEGORY_LABEL, tcLabel } from '../lib/timeControls';
-import { acceptFriendRequest, pairId, removeFriendship, sendFriendRequest, useFriendships } from '../lib/social';
+import {
+  acceptFriendRequest,
+  blockUser,
+  pairId,
+  removeFriendship,
+  sendFriendRequest,
+  unblockUser,
+  useBlocks,
+  useFriendships,
+} from '../lib/social';
 import ProfileExtras from '../components/ProfileExtras';
 import type { GameDoc, Profile as ProfileDoc } from '../lib/types';
 
@@ -22,6 +31,7 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
   const friendships = useFriendships(user?.uid);
   const [friendError, setFriendError] = useState('');
+  const blocks = useBlocks(user?.uid);
 
   const isMe = user?.uid === uid;
   const shown = isMe && me ? me : p;
@@ -60,8 +70,25 @@ export default function Profile() {
     try {
       if (!me || !shown) return;
       if (!relation) await sendFriendRequest(me, { uid, name: shown.name });
-      else if (relation.status === 'pending' && relation.requester !== me.uid) await acceptFriendRequest(relation.id);
+      else if (relation.status === 'pending' && relation.requester !== me.uid) await acceptFriendRequest(relation, me);
       else await removeFriendship(relation.id);
+    } catch (e) {
+      const msg = (e as Error).message;
+      setFriendError(
+        msg.includes('permission') ? 'Не получилось: возможно, игрок ограничил запросы в друзья.' : msg,
+      );
+    }
+  }
+
+  const blocked = blocks.some((b) => b.uid === uid);
+
+  async function toggleBlock() {
+    setFriendError('');
+    try {
+      if (!me || !shown) return;
+      if (blocked) await unblockUser(me.uid, uid);
+      else if (window.confirm(`Заблокировать ${shown.name}? Игрок не сможет писать вам запросы, приглашения и уведомления.`))
+        await blockUser(me, { uid, name: shown.name });
     } catch (e) {
       setFriendError((e as Error).message);
     }
@@ -85,9 +112,16 @@ export default function Profile() {
             {flag(shown.country)} {shown.name}
           </h2>
           {!isMe && me && (
-            <button className="btn small" onClick={friendAction}>
-              {friendLabel}
-            </button>
+            <span className="row">
+              {!blocked && (
+                <button className="btn small" onClick={friendAction}>
+                  {friendLabel}
+                </button>
+              )}
+              <button className="btn small ghost" onClick={toggleBlock} title="Чёрный список">
+                {blocked ? 'Разблокировать' : '🚫 Заблокировать'}
+              </button>
+            </span>
           )}
           {isMe && !editing && (
             <button

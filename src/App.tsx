@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import { NotificationsProvider } from './NotificationsContext';
 import Analysis from './pages/Analysis';
 import Bots from './pages/Bots';
 import ClubPage from './pages/ClubPage';
@@ -11,6 +12,7 @@ import Home from './pages/Home';
 import Leaderboard from './pages/Leaderboard';
 import Learn from './pages/Learn';
 import Login from './pages/Login';
+import NotificationsPage from './pages/Notifications';
 import Openings from './pages/Openings';
 import Profile from './pages/Profile';
 import PuzzleRush from './pages/PuzzleRush';
@@ -22,7 +24,7 @@ import Tournaments from './pages/Tournaments';
 
 export default function App() {
   return (
-    <>
+    <NotificationsProvider>
       <Navbar />
       <main className="container">
         <Routes>
@@ -44,10 +46,11 @@ export default function App() {
           <Route path="/tournament/:id" element={<TournamentPage />} />
           <Route path="/club/:id" element={<ClubPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile/:uid" element={<Profile />} />
           <Route path="*" element={<div className="card">Страница не найдена</div>} />
         </Routes>
       </main>
-    </>
+    </NotificationsProvider>
   );
 }

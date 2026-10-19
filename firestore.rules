@@ -6,10 +6,56 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Игрок target заблокировал игрока who: тот не может слать ему запросы, приглашения и уведомления
+    function isBlockedBy(target, who) {
+      return exists(/databases/$(database)/documents/users/$(target)/blocks/$(who));
+    }
+
     match /users/{uid} {
       allow read: if true;
       allow create, update: if signedIn() && request.auth.uid == uid;
       allow delete: if false;
+
+      // Чёрный список: видит и меняет только сам игрок
+      match /blocks/{bid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && request.auth.uid == uid
+          && bid != uid
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'createdAt'])
+          && request.resource.data.uid == bid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() <= 24;
+        allow delete: if signedIn() && request.auth.uid == uid;
+      }
+
+      // Уведомления: читает, отмечает прочитанными и удаляет только владелец;
+      // создать (или обновить своё же) может отправитель, если его не заблокировали
+      match /notifications/{nid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow create: if signedIn() && validNotification(request.resource.data, uid);
+        allow update: if signedIn() && (
+          (request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']))
+          || (resource.data.fromUid == request.auth.uid
+            && validNotification(request.resource.data, uid))
+        );
+        allow delete: if signedIn() && request.auth.uid == uid;
+      }
+    }
+
+    function validNotification(d, uid) {
+      return d.keys().hasOnly(['kind', 'fromUid', 'fromName', 'title', 'body', 'link', 'read', 'createdAt'])
+        && d.fromUid == request.auth.uid
+        && uid != request.auth.uid
+        && d.kind in ['friend_request', 'friend_accepted', 'message', 'game_invite', 'your_turn',
+                      'club_request', 'club_approved', 'tournament_round']
+        && d.fromName is string && d.fromName.size() <= 24
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 80
+        && d.body is string && d.body.size() <= 200
+        && d.link is string && d.link.size() <= 120 && d.link.matches('^/[A-Za-z0-9_/.?=&#-]*$')
+        && d.read == false
+        && d.createdAt == request.time
+        && !isBlockedBy(uid, request.auth.uid);
     }
 
     // Дружба: один документ на пару игроков, id = uid-ы по алфавиту через «_»
@@ -23,7 +69,11 @@ service cloud.firestore {
         && request.resource.data.requester == request.auth.uid
         && request.resource.data.status == 'pending'
         && (pid == request.resource.data.users[0] + '_' + request.resource.data.users[1]
-            || pid == request.resource.data.users[1] + '_' + request.resource.data.users[0]);
+            || pid == request.resource.data.users[1] + '_' + request.resource.data.users[0])
+        && !isBlockedBy(
+          request.resource.data.users[0] == request.auth.uid
+            ? request.resource.data.users[1] : request.resource.data.users[0],
+          request.auth.uid);
 
       // Принять запрос может только получатель; менять другие поля нельзя
       allow update: if signedIn()
@@ -212,7 +262,8 @@ service cloud.firestore {
       allow create: if signedIn()
         && request.resource.data.from == request.auth.uid
         && request.resource.data.to is string
-        && request.resource.data.to != request.auth.uid;
+        && request.resource.data.to != request.auth.uid
+        && !isBlockedBy(request.resource.data.to, request.auth.uid);
       allow delete: if signedIn()
         && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
       allow update: if false;

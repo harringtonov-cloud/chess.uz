@@ -16,6 +16,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db, firebaseConfigured } from '../firebase';
+import { notify } from './notifications';
 import type { Profile } from './types';
 
 export type ClubRole = 'owner' | 'admin' | 'member' | 'pending';
@@ -97,13 +98,21 @@ export function updateClub(club: Club, input: { name: string; description: strin
 }
 
 /** В открытый клуб вступают сразу, в закрытый — подают заявку. */
-export function joinClub(club: Club, me: Profile) {
-  return setDoc(doc(db, 'clubs', club.id, 'members', me.uid), {
+export async function joinClub(club: Club, me: Profile): Promise<void> {
+  await setDoc(doc(db, 'clubs', club.id, 'members', me.uid), {
     uid: me.uid,
     name: me.name,
     role: club.isOpen ? 'member' : 'pending',
     joinedAt: serverTimestamp(),
   });
+  if (!club.isOpen) {
+    void notify(club.ownerId, me, {
+      kind: 'club_request',
+      title: `${me.name} хочет вступить в клуб «${club.name}»`,
+      link: `/club/${club.id}`,
+      ref: club.id,
+    });
+  }
 }
 
 /** Выйти из клуба, отозвать заявку, отклонить заявку или исключить участника. */
@@ -111,8 +120,14 @@ export function removeMember(clubId: string, uid: string) {
   return deleteDoc(doc(db, 'clubs', clubId, 'members', uid));
 }
 
-export function approveMember(clubId: string, uid: string) {
-  return updateDoc(doc(db, 'clubs', clubId, 'members', uid), { role: 'member' });
+export async function approveMember(club: Club, uid: string, me: Profile): Promise<void> {
+  await updateDoc(doc(db, 'clubs', club.id, 'members', uid), { role: 'member' });
+  void notify(uid, me, {
+    kind: 'club_approved',
+    title: `Вас приняли в клуб «${club.name}»`,
+    link: `/club/${club.id}`,
+    ref: club.id,
+  });
 }
 
 export function setMemberRole(clubId: string, uid: string, role: 'admin' | 'member') {
