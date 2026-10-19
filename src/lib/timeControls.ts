@@ -31,6 +31,7 @@ export const TIME_CONTROLS: { group: Category; items: TimeControl[] }[] = [
 ];
 
 export function tcLabel(tc: TimeControl): string {
+  if (tc.base >= 86400 && tc.inc === 0 && tc.base % 86400 === 0) return `${tc.base / 86400} дн./ход`;
   if (tc.base < 60) return tc.inc ? `${tc.base}с+${tc.inc}` : `${tc.base}с`;
   const minutes = tc.base / 60;
   const base = Number.isInteger(minutes) ? String(minutes) : minutes.toFixed(1);
@@ -58,7 +59,23 @@ export function formatClock(ms: number): string {
     return `0:0${s}.${t}`;
   }
   const secs = Math.ceil(total / 1000);
+  if (secs >= 86400) {
+    return `${Math.floor(secs / 86400)}д ${Math.floor((secs % 86400) / 3600)}ч`;
+  }
+  if (secs >= 3600) {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return `${h}:${String(m).padStart(2, '0')}:${String(secs % 60).padStart(2, '0')}`;
+  }
   const m = Math.floor(secs / 60);
   const s = secs % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/** Дни на ход для ежедневных партий. */
+export const DAILY_DAYS = [1, 2, 3, 5, 7, 14];
+
+/** Название контроля времени партии: у ежедневных своя метка. */
+export function gameCategoryLabel(g: { category: Category; daily?: boolean }): string {
+  return g.daily ? 'Ежедневные' : CATEGORY_LABEL[g.category];
 }

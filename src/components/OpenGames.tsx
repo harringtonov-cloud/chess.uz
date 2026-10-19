@@ -4,7 +4,7 @@ import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
 import { cancelWaiting, joinGame } from '../lib/games';
 import { useOpenGames } from '../lib/lobby';
-import { CATEGORY_LABEL, tcLabel } from '../lib/timeControls';
+import { gameCategoryLabel, tcLabel } from '../lib/timeControls';
 
 /** Список открытых партий: любую можно принять одним нажатием. */
 export default function OpenGames() {
@@ -47,7 +47,7 @@ export default function OpenGames() {
                 </td>
                 <td>
                   {tcLabel({ base: g.base, inc: g.inc })}{' '}
-                  <span className="muted">{CATEGORY_LABEL[g.category]}</span>
+                  <span className="muted">{gameCategoryLabel(g)}</span>
                 </td>
                 <td>{g.rated ? 'рейтинговая' : 'обычная'}</td>
                 <td className="muted">{mine ? '' : `вы ${youPlay}`}</td>

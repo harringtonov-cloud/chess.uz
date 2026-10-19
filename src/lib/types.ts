@@ -50,6 +50,8 @@ export interface GameDoc {
   drawOffer: Color | null;
   /** Кто просит вернуть ход (у старых партий поля может не быть). */
   takebackOffer?: Color | null;
+  /** Ежедневная партия: base — это лимит на ход в секундах (дни × 86400), без добавки */
+  daily?: boolean;
   rematchOffer: Color | null;
   rematch: string | null;
   ratingApplied: Record<string, boolean>;

@@ -29,7 +29,7 @@ import {
   resign,
 } from '../lib/games';
 import { playSound } from '../lib/sound';
-import { CATEGORY_LABEL, tcLabel } from '../lib/timeControls';
+import { gameCategoryLabel, tcLabel } from '../lib/timeControls';
 import type { GameDoc } from '../lib/types';
 
 export default function GamePage() {
@@ -96,7 +96,7 @@ export default function GamePage() {
 
   // фиксируем падение флажка
   useEffect(() => {
-    if (!game || game.status !== 'active' || game.moves.length < 2) return;
+    if (!game || game.status !== 'active' || (game.moves.length < 2 && !game.daily)) return;
     const mover = game.moves.length % 2 === 0 ? clk.white : clk.black;
     if (mover <= 0 && flaggedAt.current !== game.moves.length) {
       flaggedAt.current = game.moves.length;
@@ -165,7 +165,7 @@ export default function GamePage() {
       <div className="card narrow">
         <h2>{mine ? 'Ждём соперника…' : 'Подключаемся к партии…'}</h2>
         <p className="muted">
-          {tcLabel({ base: game.base, inc: game.inc })} · {CATEGORY_LABEL[game.category]} ·{' '}
+          {tcLabel({ base: game.base, inc: game.inc })} · {gameCategoryLabel(game)} ·{' '}
           {game.rated ? 'рейтинговая' : 'нерейтинговая'}
         </p>
         {mine && (
@@ -250,7 +250,7 @@ export default function GamePage() {
       <div className="side-col">
         <div className="card">
           <div className="muted">
-            {tcLabel({ base: game.base, inc: game.inc })} · {CATEGORY_LABEL[game.category]} ·{' '}
+            {tcLabel({ base: game.base, inc: game.inc })} · {gameCategoryLabel(game)} ·{' '}
             {game.rated ? 'рейтинговая' : 'нерейтинговая'}
           </div>
           {game.status === 'finished' && (

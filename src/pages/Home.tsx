@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CustomGame from '../components/CustomGame';
 import LiveGames from '../components/LiveGames';
+import MyDailyGames from '../components/MyDailyGames';
 import OpenGames from '../components/OpenGames';
 import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
@@ -83,6 +84,7 @@ export default function Home() {
         {error && <p className="error">{error}</p>}
       </section>
 
+      <MyDailyGames />
       <CustomGame />
       <OpenGames />
       <LiveGames />

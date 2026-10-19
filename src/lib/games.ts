@@ -38,7 +38,7 @@ export function colorOf(g: GameDoc, uid: string | undefined): Color | null {
 export function clocks(g: GameDoc, now: number): { white: number; black: number } {
   let white = g.whiteTime;
   let black = g.blackTime;
-  if (g.status === 'active' && g.moves.length >= 2 && g.lastMoveAt) {
+  if (g.status === 'active' && (g.moves.length >= 2 || g.daily) && g.lastMoveAt) {
     const elapsed = Math.max(0, now - g.lastMoveAt.toMillis());
     if (g.moves.length % 2 === 0) white -= elapsed;
     else black -= elapsed;
@@ -49,7 +49,7 @@ export function clocks(g: GameDoc, now: number): { white: number; black: number 
 export async function createGame(
   profile: Profile,
   tc: TimeControl,
-  opts: { private: boolean; color?: Color; rated?: boolean },
+  opts: { private: boolean; color?: Color; rated?: boolean; daily?: boolean },
 ): Promise<string> {
   const color: Color = opts.color ?? (Math.random() < 0.5 ? 'white' : 'black');
   const category = categoryOf(tc);
@@ -70,7 +70,8 @@ export async function createGame(
     base: tc.base,
     inc: tc.inc,
     category,
-    rated: opts.rated ?? !opts.private,
+    rated: opts.daily ? false : (opts.rated ?? !opts.private),
+    daily: opts.daily ?? false,
     private: opts.private,
     whiteTime: tc.base * 1000,
     blackTime: tc.base * 1000,
@@ -164,7 +165,7 @@ export async function makeMove(
     const timeKey = color === 'white' ? 'whiteTime' : 'blackTime';
     let time = color === 'white' ? g.whiteTime : g.blackTime;
 
-    if (g.moves.length >= 2) {
+    if (g.moves.length >= 2 || g.daily) {
       const last = g.lastMoveAt ? g.lastMoveAt.toMillis() : now;
       time -= Math.max(0, now - last);
       if (time <= 0) {
@@ -177,7 +178,8 @@ export async function makeMove(
         });
         return;
       }
-      time += g.inc * 1000;
+      // ежедневная партия: после хода лимит на следующий ход снова полный
+      time = g.daily ? g.base * 1000 : time + g.inc * 1000;
     }
 
     const update: Record<string, unknown> = {
@@ -238,7 +240,7 @@ export function abortGame(id: string, uid: string) {
 /** Любой участник может зафиксировать падение флажка, если время действительно вышло. */
 export function flagGame(id: string, now: number) {
   return finishIfActive(id, (g) => {
-    if (g.moves.length < 2) return null;
+    if (g.moves.length < 2 && !g.daily) return null;
     const c = clocks(g, now);
     if (g.moves.length % 2 === 0 && c.white <= 0) return { result: '0-1', reason: 'timeout' };
     if (g.moves.length % 2 === 1 && c.black <= 0) return { result: '1-0', reason: 'timeout' };
@@ -302,8 +304,8 @@ export async function acceptTakeback(id: string, uid: string, now: number): Prom
       moves,
       fen: chess.fen(),
       lastMove: last ? { from: last.from, to: last.to } : null,
-      whiteTime: c.white,
-      blackTime: c.black,
+      whiteTime: g.daily ? g.base * 1000 : c.white,
+      blackTime: g.daily ? g.base * 1000 : c.black,
       lastMoveAt: serverTimestamp(),
       takebackOffer: null,
       drawOffer: null,

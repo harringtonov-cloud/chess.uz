@@ -225,12 +225,21 @@ service cloud.firestore {
       allow create: if signedIn()
         && (request.resource.data.white == request.auth.uid
             || request.resource.data.black == request.auth.uid)
-        && request.resource.data.base is number
-        && request.resource.data.base >= 10
-        && request.resource.data.base <= 14400
-        && request.resource.data.inc is number
-        && request.resource.data.inc >= 0
-        && request.resource.data.inc <= 300;
+        && (
+          (request.resource.data.base is number
+            && request.resource.data.base >= 10
+            && request.resource.data.base <= 14400
+            && request.resource.data.inc is number
+            && request.resource.data.inc >= 0
+            && request.resource.data.inc <= 300)
+          // ежедневная партия: от 1 до 14 суток на ход, без добавки и без рейтинга
+          || (request.resource.data.get('daily', false) == true
+            && request.resource.data.base is number
+            && request.resource.data.base >= 86400
+            && request.resource.data.base <= 1209600
+            && request.resource.data.inc == 0
+            && request.resource.data.rated == false)
+        );
 
       // Обновлять партию могут игроки; присоединиться может любой вошедший
       // пользователь, если партия ждёт соперника и он занимает свободное место.

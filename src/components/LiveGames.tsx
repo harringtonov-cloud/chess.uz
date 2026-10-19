@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { firebaseConfigured } from '../firebase';
 import { useLiveGames } from '../lib/lobby';
-import { CATEGORY_LABEL, tcLabel } from '../lib/timeControls';
+import { gameCategoryLabel, tcLabel } from '../lib/timeControls';
 
 /** Партии, которые идут прямо сейчас: любую можно смотреть. Первая в списке — самая сильная. */
 export default function LiveGames() {
@@ -22,7 +22,7 @@ export default function LiveGames() {
                 <b>{g.blackName}</b> <span className="muted">({g.blackRating})</span>
               </td>
               <td>
-                {tcLabel({ base: g.base, inc: g.inc })} <span className="muted">{CATEGORY_LABEL[g.category]}</span>
+                {tcLabel({ base: g.base, inc: g.inc })} <span className="muted">{gameCategoryLabel(g)}</span>
               </td>
               <td className="muted">ход {Math.floor(g.moves.length / 2) + 1}</td>
               <td>

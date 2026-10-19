@@ -6,6 +6,7 @@ import { createGame } from '../lib/games';
 import {
   CATEGORY_LABEL,
   CUSTOM_LIMITS,
+  DAILY_DAYS,
   categoryOf,
   tcLabel,
   validateTimeControl,
@@ -28,6 +29,8 @@ type Seat = Color | 'random';
 export default function CustomGame() {
   const { profile } = useAuth();
   const nav = useNavigate();
+  const [daily, setDaily] = useState(false);
+  const [days, setDays] = useState(3);
   const [minutes, setMinutes] = useState('10');
   const [inc, setInc] = useState('0');
   const [seat, setSeat] = useState<Seat>('random');
@@ -38,8 +41,10 @@ export default function CustomGame() {
 
   // допускаем запятую как десятичный разделитель: «0,5» = полминуты
   const num = (v: string) => Number(v.replace(',', '.'));
-  const tc = { base: Math.round(num(minutes) * 60), inc: Math.round(num(inc)) };
-  const problem = validateTimeControl(tc);
+  const tc = daily
+    ? { base: days * 86400, inc: 0 }
+    : { base: Math.round(num(minutes) * 60), inc: Math.round(num(inc)) };
+  const problem = daily ? null : validateTimeControl(tc);
 
   async function create() {
     if (!profile) return nav('/login');
@@ -49,7 +54,8 @@ export default function CustomGame() {
     try {
       const id = await createGame(profile, tc, {
         private: !open,
-        rated: open && rated,
+        rated: !daily && open && rated,
+        daily,
         color: seat === 'random' ? undefined : seat,
       });
       nav(`/game/${id}`);
@@ -64,6 +70,33 @@ export default function CustomGame() {
       <h2>Своя игра</h2>
       <p className="muted">Задайте время сами и создайте партию: она появится в списке открытых или уйдёт по ссылке.</p>
 
+      <div className="row wrap">
+        <button className={`btn small ${!daily ? 'primary' : ''}`} onClick={() => setDaily(false)}>
+          На время
+        </button>
+        <button className={`btn small ${daily ? 'primary' : ''}`} onClick={() => setDaily(true)}>
+          📅 Ежедневная
+        </button>
+      </div>
+
+      {daily && (
+        <>
+          <p className="muted">
+            Ходите, когда удобно: на каждый ход даётся несколько суток. Можно закрыть сайт, партия ждёт. Если не успеть
+            сделать ход, засчитывается поражение. Ежедневные партии не влияют на рейтинг.
+          </p>
+          <div className="row wrap">
+            <span>Дней на ход:</span>
+            {DAILY_DAYS.map((d) => (
+              <button key={d} className={`btn small ${days === d ? 'primary' : ''}`} onClick={() => setDays(d)}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!daily && (
       <div className="tc-row">
         {PRESETS.map((p) => (
           <button
@@ -78,7 +111,9 @@ export default function CustomGame() {
           </button>
         ))}
       </div>
+      )}
 
+      {!daily && (
       <div className="custom-fields">
         <label>
           <span className="muted">Минут на партию</span>
@@ -105,10 +140,11 @@ export default function CustomGame() {
           />
         </label>
       </div>
+      )}
 
       <p>
         Контроль: <b>{problem ? '—' : tcLabel(tc)}</b>
-        {!problem && <span className="muted"> · {CATEGORY_LABEL[categoryOf(tc)]}</span>}
+        {!problem && <span className="muted"> · {daily ? 'Ежедневные' : CATEGORY_LABEL[categoryOf(tc)]}</span>}
       </p>
 
       <div className="row wrap">
@@ -129,7 +165,7 @@ export default function CustomGame() {
         </button>
       </div>
 
-      {open && (
+      {open && !daily && (
         <label className="check-row">
           <input type="checkbox" checked={rated} onChange={(e) => setRated(e.target.checked)} />
           Рейтинговая партия

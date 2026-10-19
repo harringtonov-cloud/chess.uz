@@ -3,6 +3,7 @@ import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
 import { setSoundEnabled, soundEnabled } from '../lib/sound';
 import { useState } from 'react';
+import { isMyTurn, useMyDailyGames } from '../lib/lobby';
 import { useFriendships, useInvites } from '../lib/social';
 
 export default function Navbar() {
@@ -10,6 +11,8 @@ export default function Navbar() {
   const [sound, setSound] = useState(soundEnabled());
   const friendships = useFriendships(profile?.uid);
   const invites = useInvites(profile?.uid);
+  const dailyGames = useMyDailyGames(profile?.uid);
+  const myTurns = profile ? dailyGames.filter(({ g }) => isMyTurn(g, profile.uid)).length : 0;
   const pending =
     friendships.filter((f) => f.status === 'pending' && f.requester !== profile?.uid).length + invites.length;
   return (
@@ -18,7 +21,9 @@ export default function Navbar() {
         ♞ chess<span>.uz</span>
       </Link>
       <nav>
-        <NavLink to="/">Играть</NavLink>
+        <NavLink to="/">
+          Играть{myTurns > 0 && <span className="badge" title="Ваш ход в ежедневных партиях">{myTurns}</span>}
+        </NavLink>
         <NavLink to="/bots">Боты</NavLink>
         <NavLink to="/puzzles">Головоломки</NavLink>
         <NavLink to="/learn">Учиться</NavLink>
