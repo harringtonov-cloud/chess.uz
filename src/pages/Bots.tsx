@@ -42,7 +42,15 @@ export default function Bots() {
   const [startFen, setStartFen] = useState<string | null>(null);
   const [tcIdx, setTcIdx] = useState(0);
   const [odds, setOdds] = useState<Odds>('none');
-  const [customFen, setCustomFen] = useState('');
+  const [customFen, setCustomFen] = useState(() => {
+    try {
+      const f = sessionStorage.getItem('bot_fen');
+      if (f) sessionStorage.removeItem('bot_fen');
+      return f ?? '';
+    } catch {
+      return '';
+    }
+  });
   const [startError, setStartError] = useState('');
   const [clocks, setClocks] = useState({ white: 0, black: 0 });
   const [flag, setFlag] = useState<'white' | 'black' | null>(null);
@@ -262,7 +270,7 @@ export default function Bots() {
             ))}
           </select>
         </div>
-        <details>
+        <details open={customFen.trim() !== ''}>
           <summary>Начать из своей позиции (FEN)</summary>
           <input
             value={customFen}

@@ -4,6 +4,7 @@ import Analysis from './pages/Analysis';
 import Bots from './pages/Bots';
 import ClubPage from './pages/ClubPage';
 import Clubs from './pages/Clubs';
+import Editor from './pages/Editor';
 import Friends from './pages/Friends';
 import GamePage from './pages/Game';
 import Home from './pages/Home';
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/puzzles" element={<Puzzles />} />
           <Route path="/rush" element={<PuzzleRush />} />
           <Route path="/learn" element={<Learn />} />
+          <Route path="/editor" element={<Editor />} />
           <Route path="/vision" element={<Vision />} />
           <Route path="/openings" element={<Openings />} />
           <Route path="/analysis" element={<Analysis />} />

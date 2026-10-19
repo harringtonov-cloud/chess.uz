@@ -28,6 +28,7 @@ export default function Navbar() {
         <NavLink to="/puzzles">Головоломки</NavLink>
         <NavLink to="/learn">Учиться</NavLink>
         <NavLink to="/openings">Дебюты</NavLink>
+        <NavLink to="/editor">Редактор</NavLink>
         <NavLink to="/analysis">Анализ</NavLink>
         <NavLink to="/leaderboard">Рейтинг</NavLink>
         {firebaseConfigured && <NavLink to="/tournaments">Турниры</NavLink>}
