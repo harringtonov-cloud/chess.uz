@@ -211,3 +211,24 @@ textarea { min-height: 70px; resize: vertical; }
 .strikes { display: flex; gap: 10px; font-size: 28px; margin: 6px 0; }
 .strike { color: #4a4743; }
 .strike.on { color: var(--danger); }
+
+/* Шахматное зрение */
+.vision-board .sq { cursor: pointer; }
+.sq.vision-ok { box-shadow: inset 0 0 0 100px rgba(80, 200, 80, 0.6); }
+.sq.vision-bad { box-shadow: inset 0 0 0 100px rgba(229, 96, 79, 0.65); }
+.vision-target { font-size: 72px; font-weight: 800; text-align: center; letter-spacing: 2px; }
+
+/* Профиль: график и достижения */
+.rating-graph { height: 140px; margin-top: 10px; }
+.graph-dot { fill: var(--accent); }
+.badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.badge-item { display: flex; align-items: center; gap: 8px; background: var(--panel-2); border-radius: 8px; padding: 8px 10px; opacity: 0.4; filter: grayscale(1); font-size: 14px; }
+.badge-item.earned { opacity: 1; filter: none; border: 1px solid var(--accent); }
+.badge-icon { font-size: 22px; }
+
+/* Стрелки и пометки на доске (правая кнопка мыши) */
+.board { position: relative; }
+.board-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+.arrow-line { stroke: rgba(255, 170, 0, 0.85); stroke-width: 0.16; stroke-linecap: butt; }
+.arrow-head { fill: rgba(255, 170, 0, 0.85); }
+.sq.mark { box-shadow: inset 0 0 0 100px rgba(235, 90, 70, 0.55); }

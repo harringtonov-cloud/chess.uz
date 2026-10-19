@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import CustomGame from '../components/CustomGame';
+import LiveGames from '../components/LiveGames';
 import OpenGames from '../components/OpenGames';
 import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
@@ -84,6 +85,7 @@ export default function Home() {
 
       <CustomGame />
       <OpenGames />
+      <LiveGames />
 
       <section className="card">
         <h2>Игра с другом</h2>

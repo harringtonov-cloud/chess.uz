@@ -54,11 +54,13 @@ export default function Puzzles() {
   const [streak, setStreak] = useState(0);
   const [best, setBest] = useState(() => Number(localStorage.getItem('puzzle_best') ?? 0));
   const [delta, setDelta] = useState<number | null>(null);
+  const [isDaily, setIsDaily] = useState(false);
   const rated = useRef(false);
   const fallbackIdx = useRef(0);
   const busy = useRef(false);
 
-  const next = useCallback(async () => {
+  const next = useCallback(async (daily = false) => {
+    setIsDaily(daily);
     setStatus('loading');
     setMsg('');
     setHint(null);
@@ -69,7 +71,7 @@ export default function Puzzles() {
     rated.current = false;
     let p: Puzzle;
     try {
-      p = await fetchPuzzle();
+      p = await fetchPuzzle(daily ? 'daily' : 'next');
       setOffline(false);
     } catch {
       p = FALLBACK[fallbackIdx.current++ % FALLBACK.length];
@@ -180,11 +182,12 @@ export default function Puzzles() {
       <div className="side-col">
         <div className="card">
           <h3>Головоломки</h3>
-          <Link className="btn small" to="/rush">⚡ Puzzle Rush на время</Link>
+          <Link className="btn small" to="/rush">⚡ Puzzle Rush на время</Link>{' '}
+          <Link className="btn small" to="/vision">👁 Шахматное зрение</Link>
           {profile && <div className="muted">Ваш рейтинг задач: <b>{profile.ratings.puzzle}</b></div>}
           {puzzle && (
             <div className="muted">
-              Задача #{puzzle.id} · сложность {puzzle.rating}
+              {isDaily ? '📅 Задача дня · ' : ''}Задача #{puzzle.id} · сложность {puzzle.rating}
             </div>
           )}
           {offline && (
@@ -230,6 +233,9 @@ export default function Puzzles() {
               }}
             >
               Показать решение
+            </button>
+            <button className="btn" disabled={status === 'loading'} onClick={() => void next(true)}>
+              📅 Задача дня
             </button>
             <button className="btn primary" disabled={status === 'loading'} onClick={() => void next()}>
               Следующая →

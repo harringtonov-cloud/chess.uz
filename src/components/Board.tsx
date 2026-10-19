@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Chess } from 'chess.js';
 import type { Square } from 'chess.js';
 import type { Promo } from '../lib/chessUtil';
@@ -40,6 +40,15 @@ export default function Board({
   const chess = useMemo(() => new Chess(fen), [fen]);
   const [selected, setSelected] = useState<Square | null>(null);
   const [pendingPromo, setPendingPromo] = useState<{ from: Square; to: Square } | null>(null);
+  // стрелки и пометки: рисуются правой кнопкой мыши, исчезают при ходе или левом клике
+  const [arrows, setArrows] = useState<{ from: string; to: string }[]>([]);
+  const [marks, setMarks] = useState<string[]>([]);
+  const [drawFrom, setDrawFrom] = useState<string | null>(null);
+
+  useEffect(() => {
+    setArrows([]);
+    setMarks([]);
+  }, [fen]);
 
   const turn = chess.turn(); // 'w' | 'b'
   const canMove =
@@ -77,6 +86,10 @@ export default function Board({
   }
 
   function onSquareClick(sq: Square) {
+    if (arrows.length || marks.length) {
+      setArrows([]);
+      setMarks([]);
+    }
     if (!canMove) return;
     if (selected && selected !== sq && tryMove(selected, sq)) return;
     const piece = chess.get(sq);
@@ -91,7 +104,12 @@ export default function Board({
   const files = orientation === 'white' ? [0, 1, 2, 3, 4, 5, 6, 7] : [7, 6, 5, 4, 3, 2, 1, 0];
 
   return (
-    <div className="board" role="grid" aria-label="Шахматная доска">
+    <div
+      className="board"
+      role="grid"
+      aria-label="Шахматная доска"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {ranks.map((r, ri) =>
         files.map((f, fi) => {
           const sq = `${FILES[f]}${8 - r}` as Square;
@@ -107,6 +125,7 @@ export default function Board({
             isHint ? 'hint' : '',
             settings.highlights && selected === sq ? 'selected' : '',
             checkSquare === sq ? 'check' : '',
+            marks.includes(sq) ? 'mark' : '',
           ]
             .filter(Boolean)
             .join(' ');
@@ -115,6 +134,23 @@ export default function Board({
               key={sq}
               className={cls}
               onClick={() => onSquareClick(sq)}
+              onMouseDown={(e) => {
+                if (e.button === 2) setDrawFrom(sq);
+              }}
+              onMouseUp={(e) => {
+                if (e.button !== 2 || !drawFrom) return;
+                const from = drawFrom;
+                setDrawFrom(null);
+                if (from === sq) {
+                  setMarks((m) => (m.includes(sq) ? m.filter((x) => x !== sq) : [...m, sq]));
+                } else {
+                  setArrows((a) =>
+                    a.some((x) => x.from === from && x.to === sq)
+                      ? a.filter((x) => !(x.from === from && x.to === sq))
+                      : [...a, { from, to: sq }],
+                  );
+                }
+              }}
               onDragOver={(e) => canMove && e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
@@ -142,6 +178,32 @@ export default function Board({
             </div>
           );
         }),
+      )}
+      {arrows.length > 0 && (
+        <svg className="board-arrows" viewBox="0 0 8 8" aria-hidden="true">
+          {arrows.map((a) => {
+            const c = (sq: string): [number, number] => [
+              files.indexOf(FILES.indexOf(sq[0])) + 0.5,
+              ranks.indexOf(8 - Number(sq[1])) + 0.5,
+            ];
+            const [x1, y1] = c(a.from);
+            const [x2, y2] = c(a.to);
+            const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+            const ux = (x2 - x1) / len;
+            const uy = (y2 - y1) / len;
+            const head = 0.4;
+            const bx = x2 - ux * head;
+            const by = y2 - uy * head;
+            const px = -uy * 0.22;
+            const py = ux * 0.22;
+            return (
+              <g key={a.from + a.to}>
+                <line x1={x1} y1={y1} x2={bx} y2={by} className="arrow-line" />
+                <polygon points={`${x2},${y2} ${bx + px},${by + py} ${bx - px},${by - py}`} className="arrow-head" />
+              </g>
+            );
+          })}
+        </svg>
       )}
       {pendingPromo && (
         <div className="promo-overlay" onClick={() => setPendingPromo(null)}>

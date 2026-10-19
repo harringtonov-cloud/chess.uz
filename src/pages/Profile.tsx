@@ -6,6 +6,7 @@ import { useAuth } from '../AuthContext';
 import { resultText } from '../lib/chessUtil';
 import { CATEGORY_LABEL, tcLabel } from '../lib/timeControls';
 import { acceptFriendRequest, pairId, removeFriendship, sendFriendRequest, useFriendships } from '../lib/social';
+import ProfileExtras from '../components/ProfileExtras';
 import type { GameDoc, Profile as ProfileDoc } from '../lib/types';
 
 export default function Profile() {
@@ -32,7 +33,7 @@ export default function Profile() {
       .then((s) => setP(s.exists() ? ({ ...(s.data() as ProfileDoc), uid }) : null))
       .catch(() => setP(null));
     getDocs(
-      query(collection(db, 'games'), where('participants', 'array-contains', uid), orderBy('createdAt', 'desc'), limit(20)),
+      query(collection(db, 'games'), where('participants', 'array-contains', uid), orderBy('createdAt', 'desc'), limit(100)),
     )
       .then((snap) => setGames(snap.docs.map((d) => ({ id: d.id, g: d.data() as GameDoc }))))
       .catch((e: Error) => setGamesError(e.message));
@@ -142,6 +143,8 @@ export default function Profile() {
         </div>
       </div>
 
+      <ProfileExtras profile={shown} games={games} />
+
       <div className="card">
         <h3>Последние партии</h3>
         {gamesError && (
@@ -156,6 +159,7 @@ export default function Profile() {
           <tbody>
             {games
               .filter(({ g }) => g.status !== 'waiting')
+              .slice(0, 20)
               .map(({ id, g }) => (
                 <tr key={id}>
                   <td>

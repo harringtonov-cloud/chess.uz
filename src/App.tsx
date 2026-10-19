@@ -16,6 +16,7 @@ import PuzzleRush from './pages/PuzzleRush';
 import Puzzles from './pages/Puzzles';
 import SettingsPage from './pages/Settings';
 import TournamentPage from './pages/TournamentPage';
+import Vision from './pages/Vision';
 import Tournaments from './pages/Tournaments';
 
 export default function App() {
@@ -31,6 +32,7 @@ export default function App() {
           <Route path="/puzzles" element={<Puzzles />} />
           <Route path="/rush" element={<PuzzleRush />} />
           <Route path="/learn" element={<Learn />} />
+          <Route path="/vision" element={<Vision />} />
           <Route path="/openings" element={<Openings />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
