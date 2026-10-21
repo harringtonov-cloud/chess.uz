@@ -16,6 +16,7 @@ import Leaderboard from './pages/Leaderboard';
 import Learn from './pages/Learn';
 import Login from './pages/Login';
 import NotificationsPage from './pages/Notifications';
+import OpeningTrainer from './pages/OpeningTrainer';
 import Openings from './pages/Openings';
 import Profile from './pages/Profile';
 import PuzzleRush from './pages/PuzzleRush';
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/editor" element={<Editor />} />
           <Route path="/vision" element={<Vision />} />
           <Route path="/openings" element={<Openings />} />
+          <Route path="/openings/train" element={<OpeningTrainer />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/friends" element={<Friends />} />
