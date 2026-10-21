@@ -39,7 +39,7 @@ function ChatPanel({ friendship, onClose }: { friendship: Friendship; onClose: (
     if (!value || !profile) return;
     setText('');
     try {
-      await sendDirectMessage(friendship.id, profile, value);
+      await sendDirectMessage(friendship.id, profile, otherUid(friendship, profile.uid), value);
     } catch (e) {
       console.error(e);
     }
@@ -176,7 +176,7 @@ export default function Friends() {
             <div key={f.id} className="row spread">
               <Link to={`/profile/${otherUid(f, me.uid)}`}>{otherName(f, me.uid)}</Link>
               <span className="row">
-                <button className="btn small primary" onClick={() => acceptFriendRequest(f.id)}>
+                <button className="btn small primary" onClick={() => acceptFriendRequest(f, me)}>
                   Принять
                 </button>
                 <button className="btn small" onClick={() => removeFriendship(f.id)}>

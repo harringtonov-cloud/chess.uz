@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { gameOverInfo, replay } from './chessUtil';
+import { notify } from './notifications';
 import { ratingDelta } from './elo';
 import { categoryOf } from './timeControls';
 import type { TimeControl } from './timeControls';
@@ -152,7 +153,10 @@ export async function makeMove(
   now: number,
 ): Promise<void> {
   const ref = doc(db, 'games', id);
+  // кого предупредить после хода в ежедневной партии
+  let turnAlert: { to: string; fromName: string } | null = null;
   await runTransaction(db, async (tx) => {
+    turnAlert = null; // транзакция может повторяться
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('Партия не найдена');
     const g = snap.data() as GameDoc;
@@ -198,7 +202,21 @@ export async function makeMove(
       update.reason = over.reason;
     }
     tx.update(ref, update);
+    const next = color === 'white' ? g.black : g.white;
+    if (g.daily && !over && next) {
+      turnAlert = { to: next, fromName: color === 'white' ? g.whiteName : g.blackName };
+    }
   });
+  const alert = turnAlert as { to: string; fromName: string } | null;
+  if (alert) {
+    void notify(alert.to, { uid, name: alert.fromName }, {
+      kind: 'your_turn',
+      title: `Ваш ход в партии с ${alert.fromName}`,
+      body: 'Ежедневная партия',
+      link: `/game/${id}`,
+      ref: id,
+    });
+  }
 }
 
 async function finishIfActive(

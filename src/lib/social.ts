@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db, firebaseConfigured } from '../firebase';
 import { createGame } from './games';
+import { notify } from './notifications';
 import { tcLabel } from './timeControls';
 import type { TimeControl } from './timeControls';
 import type { Profile } from './types';
@@ -76,10 +77,20 @@ export async function sendFriendRequest(me: Profile, other: { uid: string; name:
     status: 'pending',
     createdAt: serverTimestamp(),
   });
+  void notify(other.uid, me, {
+    kind: 'friend_request',
+    title: `${me.name} хочет добавить вас в друзья`,
+    link: '/friends',
+  });
 }
 
-export function acceptFriendRequest(id: string) {
-  return updateDoc(doc(db, 'friendships', id), { status: 'accepted' });
+export async function acceptFriendRequest(f: Friendship, me: Profile): Promise<void> {
+  await updateDoc(doc(db, 'friendships', f.id), { status: 'accepted' });
+  void notify(otherUid(f, me.uid), me, {
+    kind: 'friend_accepted',
+    title: `${me.name} принял(а) ваш запрос в друзья`,
+    link: `/profile/${me.uid}`,
+  });
 }
 
 /** Отклонить запрос, отменить свой запрос или удалить из друзей — во всех случаях документ удаляется. */
@@ -87,13 +98,16 @@ export function removeFriendship(id: string) {
   return deleteDoc(doc(db, 'friendships', id));
 }
 
-export function sendDirectMessage(friendshipId: string, me: Profile, text: string) {
-  return addDoc(collection(db, 'friendships', friendshipId, 'messages'), {
+export async function sendDirectMessage(friendshipId: string, me: Profile, toUid: string, text: string) {
+  const body = text.slice(0, 300);
+  await addDoc(collection(db, 'friendships', friendshipId, 'messages'), {
     uid: me.uid,
     name: me.name,
-    text: text.slice(0, 300),
+    text: body,
     createdAt: serverTimestamp(),
   });
+  // Одно уведомление на собеседника: новое сообщение заменяет прежнее, а не множит их.
+  void notify(toUid, me, { kind: 'message', title: `Сообщение от ${me.name}`, body, link: '/friends' });
 }
 
 /** Создаёт приватную партию и отправляет другу приглашение. Возвращает id партии. */
@@ -107,11 +121,59 @@ export async function inviteToGame(me: Profile, friend: { uid: string; name: str
     label: tcLabel(tc),
     createdAt: serverTimestamp(),
   });
+  void notify(friend.uid, me, {
+    kind: 'game_invite',
+    title: `${me.name} приглашает вас на партию`,
+    body: tcLabel(tc),
+    link: `/game/${gameId}`,
+    ref: gameId,
+  });
   return gameId;
 }
 
 export function dismissInvite(id: string) {
   return deleteDoc(doc(db, 'invites', id));
+}
+
+// ---------- Чёрный список ----------
+
+export interface BlockedUser {
+  uid: string;
+  name: string;
+}
+
+/**
+ * Блокировка: игрок больше не может слать вам запросы в друзья, приглашения и уведомления
+ * (это проверяют правила Firestore). Дружба между вами, если была, удаляется.
+ */
+export async function blockUser(me: Profile, other: { uid: string; name: string }): Promise<void> {
+  if (me.uid === other.uid) throw new Error('Нельзя заблокировать самого себя');
+  await setDoc(doc(db, 'users', me.uid, 'blocks', other.uid), {
+    uid: other.uid,
+    name: other.name,
+    createdAt: serverTimestamp(),
+  });
+  await deleteDoc(doc(db, 'friendships', pairId(me.uid, other.uid))).catch(() => undefined);
+}
+
+export function unblockUser(myUid: string, blockedUid: string) {
+  return deleteDoc(doc(db, 'users', myUid, 'blocks', blockedUid));
+}
+
+export function useBlocks(uid: string | undefined): BlockedUser[] {
+  const [list, setList] = useState<BlockedUser[]>([]);
+  useEffect(() => {
+    if (!firebaseConfigured || !uid) {
+      setList([]);
+      return;
+    }
+    return onSnapshot(
+      collection(db, 'users', uid, 'blocks'),
+      (snap) => setList(snap.docs.map((d) => ({ uid: d.id, name: (d.data() as { name?: string }).name ?? 'Игрок' }))),
+      (e) => console.error('blocks', e),
+    );
+  }, [uid]);
+  return list;
 }
 
 /** Поиск игроков по началу ника (с учётом регистра, как он записан в профиле). */

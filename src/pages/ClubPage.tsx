@@ -186,7 +186,7 @@ export default function ClubPage() {
             <div key={m.uid} className="row spread">
               <Link to={`/profile/${m.uid}`}>{m.name}</Link>
               <span className="row">
-                <button className="btn small primary" onClick={() => run(() => approveMember(c.id, m.uid))}>
+                <button className="btn small primary" onClick={() => run(() => approveMember(c, m.uid, profile!))}>
                   Принять
                 </button>
                 <button className="btn small" onClick={() => run(() => removeMember(c.id, m.uid))}>
