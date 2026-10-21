@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useModeration } from '../ModerationContext';
+import { isOwnerUid } from '../lib/moderationLogic';
 import { firebaseConfigured } from '../firebase';
 import { loadSiteStats, saveAnnouncement, useAnnouncement, useReports } from '../lib/moderation';
 import type { SiteStats, Staff } from '../lib/moderation';
@@ -12,16 +13,18 @@ import PlayerPanel from './admin/PlayerPanel';
 import PlayersTab from './admin/PlayersTab';
 import ReportsTab from './admin/ReportsTab';
 import SanctionsTab from './admin/SanctionsTab';
+import StaffTab from './admin/StaffTab';
 
-type Tab = 'overview' | 'reports' | 'players' | 'sanctions' | 'log' | 'announce';
+type Tab = 'overview' | 'reports' | 'players' | 'sanctions' | 'log' | 'announce' | 'staff';
 
-const TABS: { id: Tab; label: string; adminOnly?: boolean }[] = [
+const TABS: { id: Tab; label: string; adminOnly?: boolean; ownerOnly?: boolean }[] = [
   { id: 'overview', label: 'Обзор' },
   { id: 'reports', label: 'Жалобы' },
   { id: 'players', label: 'Игроки' },
   { id: 'sanctions', label: 'Санкции' },
   { id: 'log', label: 'Журнал' },
   { id: 'announce', label: 'Объявление', adminOnly: true },
+  { id: 'staff', label: '👑 Сотрудники', ownerOnly: true },
 ];
 
 export default function Admin() {
@@ -56,7 +59,7 @@ export default function Admin() {
       <h2>🛡 Панель модерации <span className="muted">({role === 'admin' ? 'администратор' : 'модератор'})</span></h2>
       {player && <PlayerPanel uid={player} staff={staff} onClose={() => setPlayer(null)} />}
       <div className="tabs">
-        {TABS.filter((t) => !t.adminOnly || role === 'admin').map((t) => (
+        {TABS.filter((t) => (!t.adminOnly || role === 'admin') && (!t.ownerOnly || isOwnerUid(user.uid))).map((t) => (
           <button key={t.id} className={`tab${tab === t.id ? ' active' : ''}`} onClick={() => setTab(t.id)}>
             {t.label}
           </button>
@@ -69,6 +72,7 @@ export default function Admin() {
         {tab === 'sanctions' && <SanctionsTab staff={staff} onOpenPlayer={open} />}
         {tab === 'log' && <LogTab />}
         {tab === 'announce' && role === 'admin' && <Announce staff={staff} />}
+        {tab === 'staff' && isOwnerUid(user.uid) && <StaffTab owner={staff} onOpenPlayer={open} />}
       </div>
     </div>
   );

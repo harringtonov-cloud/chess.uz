@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { collection, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
+import { collection, limit, onSnapshot, query, where } from 'firebase/firestore';
+import { watchPlayerGames } from './playerGames';
 import { db, firebaseConfigured } from '../firebase';
 import { clocks } from './games';
 import type { GameDoc } from './types';
@@ -82,21 +83,8 @@ export function useMyDailyGames(uid: string | undefined): OpenGame[] {
       setGames([]);
       return;
     }
-    const q = query(
-      collection(db, 'games'),
-      where('participants', 'array-contains', uid),
-      orderBy('createdAt', 'desc'),
-      limit(40),
-    );
-    return onSnapshot(
-      q,
-      (snap) =>
-        setGames(
-          snap.docs
-            .map((d) => ({ id: d.id, g: d.data() as GameDoc }))
-            .filter(({ g }) => g.daily && g.status !== 'finished'),
-        ),
-      () => setGames([]),
+    return watchPlayerGames(uid, 40, (rows) =>
+      setGames(rows.filter(({ g }) => g.daily && g.status !== 'finished')),
     );
   }, [uid]);
 
