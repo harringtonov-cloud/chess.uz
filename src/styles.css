@@ -261,3 +261,21 @@ textarea { min-height: 70px; resize: vertical; }
 .check-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; cursor: pointer; }
 .check-row input { width: auto; }
 .sep { border: 0; border-top: 1px solid #3a3835; margin: 12px 0; }
+
+/* модерация и жалобы */
+.site-banner { padding: 9px 20px; font-weight: 600; text-align: center; background: #2c4a63; color: #e8f1f8; }
+.site-banner.warning { background: #6b5316; color: #fff3cf; }
+.site-banner.danger { background: #7a2c24; color: #ffe3df; }
+.report-form { margin: 8px 0; display: flex; flex-direction: column; gap: 8px; max-width: 420px; }
+.report-form select { width: 100%; }
+.report-row { margin-top: 10px; }
+.report-card { border-left: 4px solid var(--danger); }
+.report-details { background: var(--panel-2); padding: 8px 10px; border-radius: 6px; margin: 8px 0; white-space: pre-wrap; }
+.link-btn { background: none; border: 0; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; padding: 0; }
+.link-btn:hover { text-decoration: underline; }
+.player-panel { border: 1px solid var(--accent); }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.bar-row { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+.bar-label { width: 280px; max-width: 45%; font-size: 14px; }
+.bar-track { flex: 1; height: 10px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--accent); }

@@ -11,9 +11,39 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(target)/blocks/$(who));
     }
 
+
+    // ---------- Модерация ----------
+    // Роли выдаются вручную в консоли Firebase: коллекция admins, документ с id = uid игрока,
+    // поле role = 'admin' или 'moderator'. Из браузера эту коллекцию изменить нельзя.
+    function isMod() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'moderator'];
+    }
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+    }
+    // Действует ли на игрока санкция одного из видов (срок ещё не вышел)
+    function sanctioned(uid, kinds) {
+      return exists(/databases/$(database)/documents/bans/$(uid))
+        && get(/databases/$(database)/documents/bans/$(uid)).data.type in kinds
+        && get(/databases/$(database)/documents/bans/$(uid)).data.until > request.time;
+    }
+    function notBanned() {
+      return !sanctioned(request.auth.uid, ['ban']);
+    }
+    // Мьют запрещает только чаты, бан запрещает и чаты
+    function notMuted() {
+      return !sanctioned(request.auth.uid, ['ban', 'mute']);
+    }
+
     match /users/{uid} {
       allow read: if true;
       allow create, update: if signedIn() && request.auth.uid == uid;
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'bio', 'ratings']);
       allow delete: if false;
 
       // Чёрный список: видит и меняет только сам игрок
@@ -47,15 +77,16 @@ service cloud.firestore {
       return d.keys().hasOnly(['kind', 'fromUid', 'fromName', 'title', 'body', 'link', 'read', 'createdAt'])
         && d.fromUid == request.auth.uid
         && uid != request.auth.uid
-        && d.kind in ['friend_request', 'friend_accepted', 'message', 'game_invite', 'your_turn',
-                      'club_request', 'club_approved', 'tournament_round']
+        && (d.kind in ['friend_request', 'friend_accepted', 'message', 'game_invite', 'your_turn',
+                       'club_request', 'club_approved', 'tournament_round']
+            || (d.kind in ['system', 'moderation'] && isMod()))
         && d.fromName is string && d.fromName.size() <= 24
         && d.title is string && d.title.size() > 0 && d.title.size() <= 80
         && d.body is string && d.body.size() <= 200
         && d.link is string && d.link.size() <= 120 && d.link.matches('^/[A-Za-z0-9_/.?=&#-]*$')
         && d.read == false
         && d.createdAt == request.time
-        && !isBlockedBy(uid, request.auth.uid);
+        && (!isBlockedBy(uid, request.auth.uid) || isMod());
     }
 
     // Дружба: один документ на пару игроков, id = uid-ы по алфавиту через «_»
@@ -92,6 +123,7 @@ service cloud.firestore {
         allow read: if signedIn()
           && request.auth.uid in get(/databases/$(database)/documents/friendships/$(pid)).data.users;
         allow create: if signedIn()
+          && notMuted()
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 300
@@ -127,6 +159,7 @@ service cloud.firestore {
     match /clubs/{cid} {
       allow read: if true;
       allow create: if signedIn()
+        && notBanned()
         && request.resource.data.ownerId == request.auth.uid
         && validClub(request.resource.data);
       // Менять название, описание и тип клуба может только владелец
@@ -175,11 +208,12 @@ service cloud.firestore {
       match /messages/{mid} {
         allow read: if isClubMember(cid);
         allow create: if isClubMember(cid)
+          && notMuted()
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 300;
-        allow delete: if isClubAdmin(cid);
+        allow delete: if isClubAdmin(cid) || isMod();
       }
     }
 
@@ -194,6 +228,7 @@ service cloud.firestore {
     match /tournaments/{tid} {
       allow read: if true;
       allow create: if signedIn()
+        && notBanned()
         && request.resource.data.organizerId == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 50
@@ -260,6 +295,7 @@ service cloud.firestore {
       allow read: if signedIn()
         && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
       allow create: if signedIn()
+        && notBanned()
         && request.resource.data.from == request.auth.uid
         && request.resource.data.to is string
         && request.resource.data.to != request.auth.uid
@@ -272,8 +308,9 @@ service cloud.firestore {
     match /games/{gid} {
       allow read: if true;
 
-      // Создать партию может только участник
+      // Создать партию может только участник (с баном нельзя)
       allow create: if signedIn()
+        && notBanned()
         && (request.resource.data.white == request.auth.uid
             || request.resource.data.black == request.auth.uid)
         && (
@@ -299,6 +336,7 @@ service cloud.firestore {
         || resource.data.black == request.auth.uid
         || (resource.data.status == 'waiting'
             && request.resource.data.status == 'active'
+            && notBanned()
             && (request.resource.data.white == request.auth.uid
                 || request.resource.data.black == request.auth.uid))
       );
@@ -311,10 +349,81 @@ service cloud.firestore {
       match /chat/{mid} {
         allow read: if true;
         allow create: if signedIn()
+          && notMuted()
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() <= 300;
+        // удалять сообщения могут сотрудники модерации
+        allow delete: if isMod();
       }
+    }
+
+    // ---------- Модерация: роли, жалобы, санкции, журнал, объявление ----------
+
+    // Роли: каждый видит только свою, сотрудники видят все; менять из браузера нельзя
+    match /admins/{aid} {
+      allow read: if signedIn() && (aid == request.auth.uid || isMod());
+      allow write: if false;
+    }
+
+    // Жалобы: id = «uid жалобщика _ uid игрока _ id партии или profile», поэтому дубли невозможны
+    match /reports/{rid} {
+      allow read: if isMod() || (signedIn() && resource.data.reporterUid == request.auth.uid);
+      allow create: if signedIn()
+        && notBanned()
+        && request.resource.data.keys().hasOnly(
+          ['reporterUid', 'reporterName', 'targetUid', 'targetName', 'reason', 'details', 'gameId', 'status', 'createdAt'])
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.targetUid is string
+        && request.resource.data.targetUid != request.auth.uid
+        && request.resource.data.targetUid.size() > 0 && request.resource.data.targetUid.size() <= 40
+        && rid == request.auth.uid + '_' + request.resource.data.targetUid + '_'
+                  + (request.resource.data.gameId == '' ? 'profile' : request.resource.data.gameId)
+        && request.resource.data.reason in ['cheating', 'abuse', 'spam', 'name', 'stalling', 'sandbagging', 'other']
+        && request.resource.data.reporterName is string && request.resource.data.reporterName.size() <= 24
+        && request.resource.data.targetName is string && request.resource.data.targetName.size() <= 24
+        && request.resource.data.details is string && request.resource.data.details.size() <= 500
+        && request.resource.data.gameId is string && request.resource.data.gameId.size() <= 40
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt == request.time;
+      // закрывать жалобу могут только сотрудники и только эти поля
+      allow update: if isMod()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'action', 'note', 'resolvedBy', 'resolvedByName', 'resolvedAt'])
+        && request.resource.data.status in ['resolved', 'dismissed'];
+      allow delete: if isAdmin();
+    }
+
+    // Санкции: id = uid наказанного. Игрок видит свою, сотрудники — все.
+    // Модератор — до 30 дней, бессрочно — только администратор.
+    match /bans/{uid} {
+      allow read: if signedIn() && (uid == request.auth.uid || isMod());
+      allow create, update: if isMod()
+        && uid != request.auth.uid
+        && request.resource.data.keys().hasOnly(['type', 'reason', 'until', 'by', 'byName', 'targetName', 'createdAt'])
+        && request.resource.data.type in ['ban', 'mute']
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.reason is string && request.resource.data.reason.size() <= 200
+        && request.resource.data.until is timestamp
+        && request.resource.data.until > request.time
+        && (isAdmin() || request.resource.data.until <= request.time + duration.value(31, 'd'))
+        && request.resource.data.createdAt == request.time;
+      allow delete: if isMod();
+    }
+
+    // Журнал действий: добавлять могут сотрудники, менять и удалять нельзя никому
+    match /modLog/{lid} {
+      allow read: if isMod();
+      allow create: if isMod()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update, delete: if false;
+    }
+
+    // Объявление сайта: видят все, меняет администратор
+    match /config/{cid} {
+      allow read: if true;
+      allow write: if isAdmin() && cid == 'announcement';
     }
   }
 }

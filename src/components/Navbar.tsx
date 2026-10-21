@@ -6,9 +6,11 @@ import { useState } from 'react';
 import { isMyTurn, useMyDailyGames } from '../lib/lobby';
 import { useFriendships, useInvites } from '../lib/social';
 import NotificationBell from './NotificationBell';
+import { useModeration } from '../ModerationContext';
 
 export default function Navbar() {
   const { profile, user, logout } = useAuth();
+  const { role } = useModeration();
   const [sound, setSound] = useState(soundEnabled());
   const friendships = useFriendships(profile?.uid);
   const invites = useInvites(profile?.uid);
@@ -41,6 +43,11 @@ export default function Navbar() {
         )}
       </nav>
       <div className="nav-right">
+        {firebaseConfigured && role && (
+          <Link className="btn small ghost" to="/admin" title="Панель модерации">
+            🛡
+          </Link>
+        )}
         {firebaseConfigured && <NotificationBell />}
         <Link className="btn small ghost" to="/settings" title="Настройки">
           ⚙

@@ -7,6 +7,7 @@ import Board from '../components/Board';
 import Chat from '../components/Chat';
 import MoveList from '../components/MoveList';
 import PlayerBar from '../components/PlayerBar';
+import ReportButton from '../components/ReportButton';
 import { replay, resultText } from '../lib/chessUtil';
 import {
   abortGame,
@@ -344,6 +345,15 @@ export default function GamePage() {
         </div>
         <div className="card">
           <Chat gameId={id} profile={profile} />
+          {myColor && oppColor && (game[oppColor] ?? '') !== '' && (
+            <div className="report-row">
+              <ReportButton
+                target={{ uid: game[oppColor] as string, name: oppColor === 'white' ? game.whiteName : game.blackName }}
+                gameId={id}
+                label="🚩 Пожаловаться на соперника"
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
