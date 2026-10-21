@@ -16,6 +16,8 @@ import {
   useFriendships,
 } from '../lib/social';
 import ProfileExtras from '../components/ProfileExtras';
+import ReportButton from '../components/ReportButton';
+import { useModeration } from '../ModerationContext';
 import type { GameDoc, Profile as ProfileDoc } from '../lib/types';
 
 export default function Profile() {
@@ -32,6 +34,7 @@ export default function Profile() {
   const friendships = useFriendships(user?.uid);
   const [friendError, setFriendError] = useState('');
   const blocks = useBlocks(user?.uid);
+  const { role } = useModeration();
 
   const isMe = user?.uid === uid;
   const shown = isMe && me ? me : p;
@@ -121,6 +124,12 @@ export default function Profile() {
               <button className="btn small ghost" onClick={toggleBlock} title="Чёрный список">
                 {blocked ? 'Разблокировать' : '🚫 Заблокировать'}
               </button>
+              <ReportButton target={{ uid, name: shown.name }} />
+              {role && (
+                <Link className="btn small ghost" to={`/admin?player=${uid}`} title="Открыть в панели модерации">
+                  🛡
+                </Link>
+              )}
             </span>
           )}
           {isMe && !editing && (

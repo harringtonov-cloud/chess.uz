@@ -1,6 +1,9 @@
 import { Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import SiteBanners from './components/SiteBanners';
+import { ModerationProvider } from './ModerationContext';
 import { NotificationsProvider } from './NotificationsContext';
+import Admin from './pages/Admin';
 import Analysis from './pages/Analysis';
 import Bots from './pages/Bots';
 import ClubPage from './pages/ClubPage';
@@ -25,7 +28,9 @@ import Tournaments from './pages/Tournaments';
 export default function App() {
   return (
     <NotificationsProvider>
+      <ModerationProvider>
       <Navbar />
+      <SiteBanners />
       <main className="container">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -46,11 +51,13 @@ export default function App() {
           <Route path="/tournament/:id" element={<TournamentPage />} />
           <Route path="/club/:id" element={<ClubPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/profile/:uid" element={<Profile />} />
           <Route path="*" element={<div className="card">Страница не найдена</div>} />
         </Routes>
       </main>
+      </ModerationProvider>
     </NotificationsProvider>
   );
 }
