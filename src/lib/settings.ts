@@ -8,6 +8,14 @@ export interface Settings {
   pieceSet: PieceSet;
   coords: boolean;
   highlights: boolean;
+  /** Точки на полях, куда можно пойти выбранной фигурой */
+  legalMoves: boolean;
+  /** Превращать пешку в ферзя сразу, без выбора фигуры */
+  autoQueen: boolean;
+  /** Просить подтверждения хода в живых партиях (против случайных кликов) */
+  confirmMove: boolean;
+  /** Разрешить премувы в живых партиях */
+  premoves: boolean;
 }
 
 export const BOARD_THEMES: Record<BoardTheme, { label: string; light: string; dark: string }> = {
@@ -30,6 +38,10 @@ const DEFAULTS: Settings = {
   pieceSet: 'svg',
   coords: true,
   highlights: true,
+  legalMoves: true,
+  autoQueen: false,
+  confirmMove: false,
+  premoves: true,
 };
 
 function load(): Settings {
@@ -42,6 +54,10 @@ function load(): Settings {
       pieceSet: parsed.pieceSet && parsed.pieceSet in PIECE_SETS ? parsed.pieceSet : DEFAULTS.pieceSet,
       coords: typeof parsed.coords === 'boolean' ? parsed.coords : DEFAULTS.coords,
       highlights: typeof parsed.highlights === 'boolean' ? parsed.highlights : DEFAULTS.highlights,
+      legalMoves: typeof parsed.legalMoves === 'boolean' ? parsed.legalMoves : DEFAULTS.legalMoves,
+      autoQueen: typeof parsed.autoQueen === 'boolean' ? parsed.autoQueen : DEFAULTS.autoQueen,
+      confirmMove: typeof parsed.confirmMove === 'boolean' ? parsed.confirmMove : DEFAULTS.confirmMove,
+      premoves: typeof parsed.premoves === 'boolean' ? parsed.premoves : DEFAULTS.premoves,
     };
   } catch {
     return DEFAULTS;

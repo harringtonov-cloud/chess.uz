@@ -244,6 +244,8 @@ export default function GamePage() {
           movable={active && viewPly === null && myColor ? myColor : null}
           lastMove={view.last}
           onMove={(f, t, p) => onMove(f, t, p)}
+          premove
+          confirmable
         />
         {bar(bottom)}
       </div>
