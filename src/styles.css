@@ -279,3 +279,12 @@ textarea { min-height: 70px; resize: vertical; }
 .bar-label { width: 280px; max-width: 45%; font-size: 14px; }
 .bar-track { flex: 1; height: 10px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
 .bar-fill { display: block; height: 100%; background: var(--accent); }
+
+/* Обзор партии */
+.review-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+.review-table th { text-align: right; font-weight: 600; color: var(--muted); padding: 2px 6px; }
+.review-table td { text-align: right; padding: 2px 6px; }
+.review-table td:first-child, .review-table th:first-child { text-align: left; }
+.review-moments { justify-content: space-between; align-items: center; margin: 6px 0; }
+.q-book { color: #9aa7b8; }
+.move-detail.retry { border-left: 3px solid var(--accent); padding-left: 10px; }
