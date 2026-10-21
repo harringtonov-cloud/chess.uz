@@ -13,17 +13,21 @@ service cloud.firestore {
 
 
     // ---------- Модерация ----------
-    // Роли выдаются вручную в консоли Firebase: коллекция admins, документ с id = uid игрока,
-    // поле role = 'admin' или 'moderator'. Из браузера эту коллекцию изменить нельзя.
+    // Роли лежат в коллекции admins (документ с id = uid игрока, поле role = 'admin' или 'moderator').
+    // Менять её может только владелец сайта (см. isOwner), остальным она доступна на чтение.
+    // Владелец сайта: всегда администратор и единственный, кто назначает сотрудников
+    function isOwner() {
+      return signedIn() && request.auth.uid == 'sd5jmuq34PXwC17XxTj87VwK8QZ2';
+    }
     function isMod() {
-      return signedIn()
+      return isOwner() || (signedIn()
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'moderator'];
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role in ['admin', 'moderator']);
     }
     function isAdmin() {
-      return signedIn()
+      return isOwner() || (signedIn()
         && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
-        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin';
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin');
     }
     // Действует ли на игрока санкция одного из видов (срок ещё не вышел)
     function sanctioned(uid, kinds) {
@@ -360,10 +364,19 @@ service cloud.firestore {
 
     // ---------- Модерация: роли, жалобы, санкции, журнал, объявление ----------
 
-    // Роли: каждый видит только свою, сотрудники видят все; менять из браузера нельзя
+    // Роли: каждый видит только свою, сотрудники видят все; менять может только владелец
     match /admins/{aid} {
       allow read: if signedIn() && (aid == request.auth.uid || isMod());
-      allow write: if false;
+      // назначать и снимать сотрудников может только владелец
+      allow create, update: if isOwner()
+        && aid != request.auth.uid
+        && request.resource.data.keys().hasOnly(['role', 'name', 'addedBy', 'addedByName', 'createdAt'])
+        && request.resource.data.role in ['admin', 'moderator']
+        && request.resource.data.name is string && request.resource.data.name.size() <= 24
+        && request.resource.data.addedBy == request.auth.uid
+        && request.resource.data.addedByName is string && request.resource.data.addedByName.size() <= 24
+        && request.resource.data.createdAt == request.time;
+      allow delete: if isOwner();
     }
 
     // Жалобы: id = «uid жалобщика _ uid игрока _ id партии или profile», поэтому дубли невозможны

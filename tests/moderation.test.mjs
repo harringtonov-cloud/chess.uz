@@ -161,3 +161,38 @@ test('поиск игрока по части ника без учёта рег�
   assert.equal(matchesPlayer('Магнус', '  '), false);
   assert.equal(matchesPlayer('Магнус', 'xyz'), false);
 });
+
+import { OWNER_UID, effectiveRole, isOwnerUid, looksLikeUid, normalizeStaffMember } from '../src/lib/moderationLogic.ts';
+import { newestFirst } from '../src/lib/gameSort.ts';
+
+test('владелец всегда администратор, остальные по документу', () => {
+  assert.equal(OWNER_UID, 'sd5jmuq34PXwC17XxTj87VwK8QZ2');
+  assert.equal(isOwnerUid(OWNER_UID), true);
+  assert.equal(isOwnerUid('other'), false);
+  assert.equal(isOwnerUid(undefined), false);
+  assert.equal(effectiveRole(OWNER_UID, null), 'admin');
+  assert.equal(effectiveRole(OWNER_UID, 'moderator'), 'admin');
+  assert.equal(effectiveRole('x', 'moderator'), 'moderator');
+  assert.equal(effectiveRole('x', null), null);
+  assert.equal(effectiveRole(null, null), null);
+});
+
+test('сотрудник из документа admins и распознавание uid', () => {
+  assert.equal(normalizeStaffMember('u', { role: 'boss' }), null);
+  const m = normalizeStaffMember('u', { role: 'moderator', name: 'Аня', addedByName: 'Я', createdAt: ts(5) });
+  assert.deepEqual(m, { uid: 'u', name: 'Аня', role: 'moderator', addedByName: 'Я', at: 5 });
+  assert.equal(normalizeStaffMember('u', { role: 'admin' }).name, 'Игрок');
+  assert.equal(looksLikeUid(OWNER_UID), true);
+  assert.equal(looksLikeUid(' ' + OWNER_UID + ' '), true);
+  assert.equal(looksLikeUid('Магнус'), false);
+  assert.equal(looksLikeUid('short'), false);
+});
+
+test('партии без индекса: новые сверху, свежесозданные первыми, обрезка по числу', () => {
+  const g = (id, ms) => ({ id, g: { createdAt: ms === null ? null : ts(ms) } });
+  const sorted = newestFirst([g('a', 100), g('b', 300), g('c', null), g('d', 200)], 3);
+  assert.deepEqual(sorted.map((x) => x.id), ['c', 'b', 'd']);
+  const input = [g('a', 1), g('b', 2)];
+  newestFirst(input, 10);
+  assert.deepEqual(input.map((x) => x.id), ['a', 'b']); // исходный список не меняется
+});

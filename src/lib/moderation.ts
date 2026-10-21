@@ -19,14 +19,17 @@ import {
 } from 'firebase/firestore';
 import { db, firebaseConfigured } from '../firebase';
 import { notify } from './notifications';
+import { fetchPlayerGames } from './playerGames';
 import { clip as clipText } from './notifyLogic';
 import {
+  effectiveRole,
   isActive,
   normalizeAnnouncement,
   normalizeLog,
   normalizeReport,
   normalizeRole,
   normalizeSanction,
+  normalizeStaffMember,
   reportDocId,
   untilFor,
   validateReport,
@@ -41,6 +44,7 @@ import type {
   ReportReason,
   Sanction,
   SanctionType,
+  StaffMember,
   StaffRole,
 } from './moderationLogic';
 import type { GameDoc, Profile } from './types';
@@ -71,7 +75,7 @@ export function useStaffRole(uid: string | undefined): StaffRole | null {
       () => setRole(null),
     );
   }, [uid]);
-  return role;
+  return effectiveRole(uid, role);
 }
 
 /** Текущая санкция игрока (даже истёкшая; проверять действие нужно через isActive). */
@@ -303,6 +307,51 @@ export function useModLog(enabled: boolean): { list: LogEntry[]; error: string }
   return state;
 }
 
+// ---------- Сотрудники (только владелец) ----------
+
+export function useStaffList(enabled: boolean): { list: StaffMember[]; error: string } {
+  const [state, setState] = useState<{ list: StaffMember[]; error: string }>({ list: [], error: '' });
+  useEffect(() => {
+    if (!enabled || !firebaseConfigured) return;
+    return onSnapshot(
+      collection(db, 'admins'),
+      (snap) => {
+        const list = snap.docs
+          .map((d) => normalizeStaffMember(d.id, d.data()))
+          .filter((m): m is StaffMember => m !== null)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        setState({ list, error: '' });
+      },
+      (e) => setState({ list: [], error: e.message }),
+    );
+  }, [enabled]);
+  return state;
+}
+
+/** Назначает администратора или модератора. Правила Firestore пускают сюда только владельца. */
+export async function grantRole(owner: Staff, target: PlayerRef, role: StaffRole): Promise<void> {
+  if (target.uid === owner.uid) throw new Error('Вы и так владелец');
+  await setDoc(doc(db, 'admins', target.uid), {
+    role,
+    name: clipText(target.name, 24),
+    addedBy: owner.uid,
+    addedByName: clipText(owner.name, 24),
+    createdAt: serverTimestamp(),
+  });
+  await writeLog(owner, 'role_grant', target, role === 'admin' ? 'администратор' : 'модератор');
+}
+
+export async function revokeRole(owner: Staff, target: PlayerRef): Promise<void> {
+  await deleteDoc(doc(db, 'admins', target.uid));
+  await writeLog(owner, 'role_revoke', target, '');
+}
+
+/** Имя игрока по uid (для назначения по скопированному идентификатору). */
+export async function playerName(uid: string): Promise<string | null> {
+  const s = await getDoc(doc(db, 'users', uid));
+  return s.exists() ? ((s.data() as { name?: string }).name ?? 'Игрок') : null;
+}
+
 // ---------- Действия над игроком (только администратор) ----------
 
 export async function resetRatings(staff: Staff, target: PlayerRef): Promise<void> {
@@ -362,9 +411,7 @@ export async function loadPlayerOverview(uid: string): Promise<PlayerOverview> {
   const [p, s, games, against, by] = await Promise.all([
     getDoc(doc(db, 'users', uid)),
     getDoc(doc(db, 'bans', uid)),
-    getDocs(
-      query(collection(db, 'games'), where('participants', 'array-contains', uid), orderBy('createdAt', 'desc'), limit(30)),
-    ).catch(() => null),
+    fetchPlayerGames(uid, 30).catch(() => null),
     getDocs(query(collection(db, 'reports'), where('targetUid', '==', uid), limit(50))),
     getDocs(query(collection(db, 'reports'), where('reporterUid', '==', uid), limit(50))),
   ]);
@@ -373,7 +420,7 @@ export async function loadPlayerOverview(uid: string): Promise<PlayerOverview> {
   return {
     profile: p.exists() ? ({ ...(p.data() as Profile), uid }) : null,
     sanction: s.exists() ? normalizeSanction(uid, s.data()) : null,
-    games: games ? games.docs.map((d) => ({ id: d.id, g: d.data() as GameDoc })) : [],
+    games: games ?? [],
     reportsAgainst: toReports(against).sort((a, b) => b.createdAt - a.createdAt),
     reportsBy: toReports(by).sort((a, b) => b.createdAt - a.createdAt),
   };

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db, firebaseConfigured } from '../firebase';
 import { useAuth } from '../AuthContext';
 import { resultText } from '../lib/chessUtil';
@@ -15,6 +15,7 @@ import {
   useBlocks,
   useFriendships,
 } from '../lib/social';
+import { fetchPlayerGames } from '../lib/playerGames';
 import ProfileExtras from '../components/ProfileExtras';
 import ReportButton from '../components/ReportButton';
 import { useModeration } from '../ModerationContext';
@@ -45,10 +46,8 @@ export default function Profile() {
     getDoc(doc(db, 'users', uid))
       .then((s) => setP(s.exists() ? ({ ...(s.data() as ProfileDoc), uid }) : null))
       .catch(() => setP(null));
-    getDocs(
-      query(collection(db, 'games'), where('participants', 'array-contains', uid), orderBy('createdAt', 'desc'), limit(100)),
-    )
-      .then((snap) => setGames(snap.docs.map((d) => ({ id: d.id, g: d.data() as GameDoc }))))
+    fetchPlayerGames(uid, 100)
+      .then(setGames)
       .catch((e: Error) => setGamesError(e.message));
   }, [uid]);
 

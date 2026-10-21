@@ -3,6 +3,48 @@
 
 export type StaffRole = 'admin' | 'moderator';
 
+/**
+ * Владелец сайта. Его uid записан и в firestore.rules: владелец всегда администратор
+ * и единственный, кто назначает и снимает других сотрудников (коллекция admins).
+ * uid не секрет: это просто идентификатор, пароля или ключа в нём нет.
+ */
+export const OWNER_UID = 'sd5jmuq34PXwC17XxTj87VwK8QZ2';
+
+export function isOwnerUid(uid: string | null | undefined): boolean {
+  return uid === OWNER_UID;
+}
+
+/** Итоговая роль: владелец — всегда администратор, даже если документа в admins нет. */
+export function effectiveRole(uid: string | null | undefined, docRole: StaffRole | null): StaffRole | null {
+  return isOwnerUid(uid) ? 'admin' : docRole;
+}
+
+export interface StaffMember {
+  uid: string;
+  name: string;
+  role: StaffRole;
+  addedByName: string;
+  at: number;
+}
+
+export function normalizeStaffMember(uid: string, d: Record<string, unknown>): StaffMember | null {
+  const role = normalizeRole(d);
+  if (!role) return null;
+  const t = d.createdAt as { toMillis?: () => number } | null | undefined;
+  return {
+    uid,
+    name: typeof d.name === 'string' && d.name ? d.name : 'Игрок',
+    role,
+    addedByName: typeof d.addedByName === 'string' ? d.addedByName : '',
+    at: t && typeof t.toMillis === 'function' ? t.toMillis() : 0,
+  };
+}
+
+/** Похоже ли введённое на uid Firebase (буквы и цифры, 20–40 знаков, без пробелов). */
+export function looksLikeUid(text: string): boolean {
+  return /^[A-Za-z0-9]{20,40}$/.test(text.trim());
+}
+
 /** Роль сотрудника хранится в коллекции admins (документ с id = uid игрока). Создаётся только вручную в консоли Firebase. */
 export function normalizeRole(data: unknown): StaffRole | null {
   if (!data || typeof data !== 'object') return null;
@@ -262,7 +304,7 @@ export function restrictions(s: Sanction | null | undefined, now: number): { ban
 
 // ---------- Журнал действий ----------
 
-export type LogKind = 'ban' | 'mute' | 'unban' | 'warn' | 'resolve' | 'dismiss' | 'reset_ratings' | 'delete_message' | 'announce';
+export type LogKind = 'ban' | 'mute' | 'unban' | 'warn' | 'resolve' | 'dismiss' | 'reset_ratings' | 'delete_message' | 'announce' | 'role_grant' | 'role_revoke';
 
 export const LOG_LABEL: Record<LogKind, string> = {
   ban: 'Бан',
@@ -274,6 +316,8 @@ export const LOG_LABEL: Record<LogKind, string> = {
   reset_ratings: 'Сброс рейтингов',
   delete_message: 'Удалено сообщение',
   announce: 'Объявление сайта',
+  role_grant: 'Назначен сотрудник',
+  role_revoke: 'Снят сотрудник',
 };
 
 export interface LogEntry {
