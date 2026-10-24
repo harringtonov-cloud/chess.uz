@@ -10,6 +10,8 @@ import Bots from './pages/Bots';
 import ClubPage from './pages/ClubPage';
 import Clubs from './pages/Clubs';
 import Editor from './pages/Editor';
+import Forum from './pages/Forum';
+import ForumPostPage from './pages/ForumPost';
 import Friends from './pages/Friends';
 import GamePage from './pages/Game';
 import Home from './pages/Home';
@@ -50,6 +52,8 @@ export default function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/friends" element={<Friends />} />
           <Route path="/clubs" element={<Clubs />} />
+          <Route path="/forum" element={<Forum />} />
+          <Route path="/forum/:id" element={<ForumPostPage />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/tournament/:id" element={<TournamentPage />} />
           <Route path="/arena/:id" element={<ArenaPage />} />

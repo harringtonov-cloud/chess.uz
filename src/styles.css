@@ -300,3 +300,6 @@ textarea { min-height: 70px; resize: vertical; }
 /* Арена-турниры */
 .arena-timer { font-size: 22px; margin: 8px 0; }
 .table tr.me td { background: rgba(255, 235, 59, 0.08); }
+/* Форум */
+.forum-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
+.forum-reply { border-top: 1px solid var(--panel-2); padding: 8px 0; }

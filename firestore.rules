@@ -466,6 +466,44 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Форум ----------
+    // Темы и ответы: писать могут вошедшие игроки без мьюта, удалять — автор или сотрудники.
+    // Счётчик ответов в теме растёт только на единицу и только вместе с отметкой времени ответа.
+    match /forumPosts/{pid} {
+      allow read: if true;
+      allow create: if signedIn()
+        && notMuted()
+        && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'title', 'body', 'replyCount', 'lastReplyAt', 'createdAt'])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 24
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3 && request.resource.data.title.size() <= 100
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 2000
+        && request.resource.data.replyCount == 0
+        && request.resource.data.lastReplyAt == null
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+        && notMuted()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount', 'lastReplyAt'])
+        && request.resource.data.replyCount == resource.data.replyCount + 1
+        && request.resource.data.lastReplyAt == request.time;
+      allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isMod());
+
+      match /replies/{rid} {
+        allow read: if true;
+        allow create: if signedIn()
+          && notMuted()
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 24
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time;
+        allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isMod());
+      }
+    }
+
     // ---------- Модерация: роли, жалобы, санкции, журнал, объявление ----------
 
     // Роли: каждый видит только свою, сотрудники видят все; менять может только владелец
