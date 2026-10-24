@@ -1,5 +1,6 @@
 import { Chess } from 'chess.js';
 import { uciToMove } from './chessUtil';
+import { puzzleUrl } from './puzzleThemes';
 
 export interface Puzzle {
   id: string;
@@ -33,8 +34,8 @@ export const FALLBACK: Puzzle[] = [
  * puzzle.solution — ходы решения, начиная с первого хода решающего.
  * Если первый ход решения не подходит к позиции после всего PGN, пробуем позицию на полход раньше.
  */
-export async function fetchPuzzle(kind: 'next' | 'daily' = 'next'): Promise<Puzzle> {
-  const res = await fetch(`https://lichess.org/api/puzzle/${kind}`, { headers: { Accept: 'application/json' } });
+export async function fetchPuzzle(kind: 'next' | 'daily' = 'next', theme = ''): Promise<Puzzle> {
+  const res = await fetch(puzzleUrl(kind, theme), { headers: { Accept: 'application/json' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   const solution: string[] = data.puzzle.solution;
