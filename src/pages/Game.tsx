@@ -32,6 +32,8 @@ import {
   resign,
 } from '../lib/games';
 import { shouldCountBlur } from '../lib/anticheat';
+import { downloadText } from '../lib/download';
+import { gamePgn, gamePgnFile } from '../lib/gamePgn';
 import { playSound } from '../lib/sound';
 import { gameCategoryLabel, tcLabel } from '../lib/timeControls';
 import type { GameDoc } from '../lib/types';
@@ -47,6 +49,7 @@ export default function GamePage() {
   const [flipped, setFlipped] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [pgnCopied, setPgnCopied] = useState(false);
 
   const prevLen = useRef<number | null>(null);
   const prevStatus = useRef<string | null>(null);
@@ -381,6 +384,23 @@ export default function GamePage() {
                 <Link className="btn primary" to={`/arena/${game.arenaId}`}>⚔ Вернуться в арену</Link>
               )}
               <Link className="btn" to={`/analysis?game=${id}`}>📈 Анализ партии</Link>
+            </div>
+          )}
+          {game.moves.length > 0 && (
+            <div className="row wrap actions">
+              <button
+                className="btn small"
+                onClick={() => {
+                  navigator.clipboard?.writeText(gamePgn(game, id));
+                  setPgnCopied(true);
+                  setTimeout(() => setPgnCopied(false), 2000);
+                }}
+              >
+                {pgnCopied ? 'PGN скопирован ✓' : '📋 Копировать PGN'}
+              </button>
+              <button className="btn small" onClick={() => downloadText(gamePgnFile(game), gamePgn(game, id))}>
+                ⬇ Скачать PGN
+              </button>
             </div>
           )}
           {error && <p className="error">{error}</p>}
