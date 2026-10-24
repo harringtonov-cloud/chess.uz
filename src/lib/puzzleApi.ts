@@ -28,16 +28,15 @@ export const FALLBACK: Puzzle[] = [
   },
 ];
 
-
 /**
- * Случайная задача из базы Lichess. Формат ответа: game.pgn — партия до задачи,
- * puzzle.solution — ходы решения, начиная с первого хода решающего.
+ * Превращает ответ Lichess в задачу; null, если позицию не удалось восстановить. Формат ответа:
+ * game.pgn — партия до задачи, puzzle.solution — ходы решения, начиная с первого хода решающего.
  * Если первый ход решения не подходит к позиции после всего PGN, пробуем позицию на полход раньше.
  */
-export async function fetchPuzzle(kind: 'next' | 'daily' = 'next', theme = ''): Promise<Puzzle> {
-  const res = await fetch(puzzleUrl(kind, theme), { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
+function convertPuzzle(data: {
+  game: { pgn: string };
+  puzzle: { id: string; rating: number; solution: string[]; themes?: string[] };
+}): Puzzle | null {
   const solution: string[] = data.puzzle.solution;
   const game = new Chess();
   game.loadPgn(data.game.pgn);
@@ -61,5 +60,54 @@ export async function fetchPuzzle(kind: 'next' | 'daily' = 'next', theme = ''): 
       themes: data.puzzle.themes ?? [],
     };
   }
-  throw new Error('Не удалось разобрать задачу');
+  return null;
+}
+
+/** Случайная задача из базы Lichess: следующая, задача дня или по теме. */
+export async function fetchPuzzle(kind: 'next' | 'daily' = 'next', theme = ''): Promise<Puzzle> {
+  const res = await fetch(puzzleUrl(kind, theme), { headers: { Accept: 'application/json' } });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const p = convertPuzzle(await res.json());
+  if (!p) throw new Error('Не удалось разобрать задачу');
+  return p;
+}
+
+/**
+ * Пачка разных задач для дуэли. Сначала один запрос к пакетному API Lichess;
+ * если он недоступен — набираем по одной. Возвращает сколько получилось (может быть меньше nb).
+ */
+export async function fetchPuzzleBatch(nb: number): Promise<Puzzle[]> {
+  try {
+    const res = await fetch(`https://lichess.org/api/puzzle/batch/mix?nb=${Math.min(50, Math.max(1, nb))}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { puzzles?: Parameters<typeof convertPuzzle>[0][] };
+      const list = (data.puzzles ?? []).map((d) => {
+        try {
+          return convertPuzzle(d);
+        } catch {
+          return null;
+        }
+      });
+      const ok = list.filter((p): p is Puzzle => p !== null);
+      if (ok.length > 0) return ok;
+    }
+  } catch {
+    /* пакетный запрос не удался — пробуем по одной */
+  }
+  const seen = new Set<string>();
+  const out: Puzzle[] = [];
+  for (let i = 0; i < nb + 4 && out.length < Math.min(nb, 12); i++) {
+    try {
+      const p = await fetchPuzzle();
+      if (!seen.has(p.id)) {
+        seen.add(p.id);
+        out.push(p);
+      }
+    } catch {
+      break;
+    }
+  }
+  return out;
 }

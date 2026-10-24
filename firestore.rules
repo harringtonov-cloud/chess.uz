@@ -466,6 +466,74 @@ service cloud.firestore {
       }
     }
 
+    // ---------- Puzzle Battle: дуэль на задачах ----------
+    // Создатель ждёт соперника (status = waiting), второй игрок заходит и запускает отсчёт,
+    // дальше каждый может менять только СВОЙ счёт: не больше чем на одну задачу за запись
+    // и не быстрее одной решённой задачи в 1,5 секунды. Подделать счёт всё равно можно (проверки
+    // на сервере нет), но накрутить его мгновенно правила не дадут.
+    match /puzzleBattles/{bid} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && notBanned()
+        && request.resource.data.keys().hasOnly(
+          ['players', 'names', 'status', 'puzzles', 'startAt', 'endsAt', 'scores', 'heartbeat', 'createdAt'])
+        && request.resource.data.players == [request.auth.uid]
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.puzzles is list
+        && request.resource.data.puzzles.size() >= 8 && request.resource.data.puzzles.size() <= 40
+        && request.resource.data.startAt == null
+        && request.resource.data.endsAt == null
+        && request.resource.data.names.keys().hasOnly([request.auth.uid])
+        && request.resource.data.names[request.auth.uid] is string
+        && request.resource.data.names[request.auth.uid].size() <= 24
+        && request.resource.data.scores.keys().hasOnly([request.auth.uid])
+        && request.resource.data.scores[request.auth.uid].solved == 0
+        && request.resource.data.scores[request.auth.uid].mistakes == 0
+        && request.resource.data.heartbeat is number
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if signedIn() && (
+        // пульс создателя, пока он ждёт
+        (resource.data.status == 'waiting'
+          && request.auth.uid in resource.data.players
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['heartbeat']))
+        // второй игрок заходит: отсчёт 5 секунд, бой 3 минуты
+        || (notBanned()
+          && resource.data.status == 'waiting'
+          && resource.data.players.size() == 1
+          && !(request.auth.uid in resource.data.players)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['players', 'names', 'scores', 'status', 'startAt', 'endsAt'])
+          && request.resource.data.players == resource.data.players.concat([request.auth.uid])
+          && request.resource.data.status == 'active'
+          && request.resource.data.startAt is int
+          && request.resource.data.startAt >= request.time.toMillis() - 15000
+          && request.resource.data.startAt <= request.time.toMillis() + 30000
+          && request.resource.data.endsAt == request.resource.data.startAt + 180000
+          && request.resource.data.scores[request.auth.uid].solved == 0
+          && request.resource.data.scores[request.auth.uid].mistakes == 0)
+        // свой счёт: на одну задачу за запись, не после конца боя и не быстрее 1,5 с на задачу
+        || (resource.data.status == 'active'
+          && request.auth.uid in resource.data.players
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores'])
+          && request.resource.data.scores.diff(resource.data.scores).affectedKeys().hasOnly([request.auth.uid])
+          && request.resource.data.scores[request.auth.uid].solved >= resource.data.scores[request.auth.uid].solved
+          && request.resource.data.scores[request.auth.uid].mistakes >= resource.data.scores[request.auth.uid].mistakes
+          && request.resource.data.scores[request.auth.uid].solved + request.resource.data.scores[request.auth.uid].mistakes
+               <= resource.data.scores[request.auth.uid].solved + resource.data.scores[request.auth.uid].mistakes + 1
+          && request.resource.data.scores[request.auth.uid].solved <= resource.data.puzzles.size()
+          && request.time.toMillis() <= resource.data.endsAt + 5000
+          && request.resource.data.scores[request.auth.uid].solved * 1500
+               <= request.time.toMillis() - resource.data.startAt + 1500)
+      );
+
+      // отменить поиск может создатель, пока никто не пришёл
+      allow delete: if signedIn()
+        && resource.data.status == 'waiting'
+        && request.auth.uid in resource.data.players;
+    }
+
     // ---------- Форум ----------
     // Темы и ответы: писать могут вошедшие игроки без мьюта, удалять — автор или сотрудники.
     // Счётчик ответов в теме растёт только на единицу и только вместе с отметкой времени ответа.

@@ -22,6 +22,7 @@ import NotificationsPage from './pages/Notifications';
 import OpeningTrainer from './pages/OpeningTrainer';
 import Openings from './pages/Openings';
 import Profile from './pages/Profile';
+import PuzzleBattle from './pages/PuzzleBattle';
 import PuzzleRush from './pages/PuzzleRush';
 import Puzzles from './pages/Puzzles';
 import SettingsPage from './pages/Settings';
@@ -43,6 +44,8 @@ export default function App() {
           <Route path="/bots" element={<Bots />} />
           <Route path="/puzzles" element={<Puzzles />} />
           <Route path="/rush" element={<PuzzleRush />} />
+          <Route path="/battle" element={<PuzzleBattle />} />
+          <Route path="/battle/:id" element={<PuzzleBattle />} />
           <Route path="/learn" element={<Learn />} />
           <Route path="/editor" element={<Editor />} />
           <Route path="/vision" element={<Vision />} />

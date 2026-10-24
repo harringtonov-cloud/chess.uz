@@ -180,6 +180,7 @@ export default function Puzzles() {
         <div className="card">
           <h3>Головоломки</h3>
           <Link className="btn small" to="/rush">⚡ Puzzle Rush на время</Link>{' '}
+          <Link className="btn small" to="/battle">⚔ Puzzle Battle</Link>{' '}
           <Link className="btn small" to="/vision">👁 Шахматное зрение</Link>
           <div className="row wrap">
             <label className="muted" htmlFor="puzzle-theme">Тема</label>
