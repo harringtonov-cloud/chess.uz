@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import Board from '../components/Board';
 import MoveList from '../components/MoveList';
@@ -84,6 +84,9 @@ export default function Openings() {
       <div className="side-col">
         <div className="card">
           <h2>Дебютный справочник</h2>
+          <Link className="btn small" to="/openings/train">
+            🎯 Тренировать дебюты
+          </Link>
           <div className="opening-name">{name ?? (moves.length ? 'Позиция вне справочника' : 'Начальная позиция')}</div>
           <MoveList moves={moves} current={moves.length} onSelect={(p) => setMoves(moves.slice(0, p))} />
           <h4>Известные продолжения</h4>
