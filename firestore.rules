@@ -228,6 +228,22 @@ service cloud.firestore {
     function isOrganizer(tid) {
       return signedIn() && get(tournamentDoc(tid)).data.organizerId == request.auth.uid;
     }
+    // Арена-турнир: обычный документ турнира с type = 'arena' и временем начала/конца (мс)
+    function isArena(tid) {
+      return get(tournamentDoc(tid)).data.get('type', '') == 'arena';
+    }
+    function arenaOpen(tid) {
+      return isArena(tid) && request.time.toMillis() < get(tournamentDoc(tid)).data.endsAt;
+    }
+    function gameDoc(gid) {
+      return /databases/$(database)/documents/games/$(gid);
+    }
+    // Партия создана для этой арены, и в ней играет указанный игрок
+    function arenaGameHas(tid, gid, uid) {
+      return gid is string
+        && getAfter(gameDoc(gid)).data.get('arenaId', '') == tid
+        && getAfter(gameDoc(gid)).data.participants.hasAll([uid]);
+    }
 
     match /tournaments/{tid} {
       allow read: if true;
@@ -244,6 +260,26 @@ service cloud.firestore {
         && request.resource.data.maxPlayers is int && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 64
         && request.resource.data.status == 'registration'
         && request.resource.data.currentRound == 0;
+      // Арена: от 10 минут до 3 часов, без туров
+      allow create: if signedIn()
+        && notBanned()
+        && request.resource.data.organizerId == request.auth.uid
+        && request.resource.data.get('type', '') == 'arena'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 50
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 300
+        && request.resource.data.base is int && request.resource.data.base >= 30 && request.resource.data.base <= 10800
+        && request.resource.data.inc is int && request.resource.data.inc >= 0 && request.resource.data.inc <= 180
+        && request.resource.data.rounds == 0
+        && request.resource.data.maxPlayers is int && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 500
+        && request.resource.data.status == 'registration'
+        && request.resource.data.currentRound == 0
+        && request.resource.data.startsAt is int
+        && request.resource.data.endsAt is int
+        && request.resource.data.endsAt - request.resource.data.startsAt >= 600000
+        && request.resource.data.endsAt - request.resource.data.startsAt <= 10800000
+        && request.resource.data.startsAt >= request.time.toMillis() - 300000;
       // Менять турнир (старт, следующий тур, завершение) может только организатор
       allow update: if signedIn()
         && resource.data.organizerId == request.auth.uid
@@ -258,11 +294,79 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.name is string
           && request.resource.data.name.size() <= 24
-          && get(tournamentDoc(tid)).data.status == 'registration';
+          && get(tournamentDoc(tid)).data.status == 'registration'
+          && !isArena(tid);
         allow delete: if signedIn() && (
-          (pid == request.auth.uid && get(tournamentDoc(tid)).data.status == 'registration')
+          (pid == request.auth.uid && get(tournamentDoc(tid)).data.status == 'registration' && !isArena(tid))
           || isOrganizer(tid)
         );
+
+        // Арена: записаться можно, пока она не закончилась
+        allow create: if signedIn()
+          && notBanned()
+          && pid == request.auth.uid
+          && arenaOpen(tid)
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'rating', 'waiting', 'paused', 'gameId', 'seenAt', 'joinedAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string && request.resource.data.name.size() <= 24
+          && request.resource.data.rating is number
+          && request.resource.data.waiting == false
+          && request.resource.data.paused == false
+          && request.resource.data.gameId == null
+          && request.resource.data.seenAt is number;
+
+        allow update: if signedIn() && isArena(tid) && (
+          // сам игрок: пауза, «ищу соперника», отметка присутствия; партию себе ставит только
+          // вместе с созданием партии арены с самим собой в числе участников
+          (pid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['waiting', 'paused', 'seenAt', 'gameId'])
+            && (request.resource.data.gameId == resource.data.gameId
+                || request.resource.data.gameId == null
+                || (resource.data.gameId == null && arenaOpen(tid)
+                    && arenaGameHas(tid, request.resource.data.gameId, request.auth.uid))))
+          // подбор: соперник записывает в документ ожидающего игрока id новой партии
+          || (pid != request.auth.uid
+            && notBanned()
+            && arenaOpen(tid)
+            && resource.data.waiting == true
+            && resource.data.paused == false
+            && resource.data.gameId == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['waiting', 'gameId'])
+            && request.resource.data.waiting == false
+            && arenaGameHas(tid, request.resource.data.gameId, pid)
+            && arenaGameHas(tid, request.resource.data.gameId, request.auth.uid))
+        );
+      }
+
+      // Итоги партий арены: каждый игрок записывает свой результат, только если такая же
+      // закончившаяся партия этой арены есть в базе
+      match /results/{rid} {
+        allow read: if true;
+        allow create: if signedIn()
+          && isArena(tid)
+          && request.resource.data.keys().hasOnly(['uid', 'gameId', 'result', 'opponent', 'color', 'at'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.gameId is string
+          && rid == request.resource.data.gameId + '_' + request.auth.uid
+          && request.resource.data.at is number
+          && request.resource.data.result in ['win', 'draw', 'loss']
+          && validArenaResult(tid, request.resource.data);
+        allow update, delete: if false;
+      }
+
+      function validArenaResult(arenaId, d) {
+        let g = get(gameDoc(d.gameId)).data;
+        return g.status == 'finished'
+          && g.get('arenaId', '') == arenaId
+          && (
+            (d.result == 'draw' && g.result == '1/2-1/2' && request.auth.uid in [g.white, g.black])
+            || (d.result == 'win'
+                && ((g.white == request.auth.uid && g.result == '1-0')
+                    || (g.black == request.auth.uid && g.result == '0-1')))
+            || (d.result == 'loss'
+                && ((g.white == request.auth.uid && g.result == '0-1')
+                    || (g.black == request.auth.uid && g.result == '1-0')))
+          );
       }
 
       match /pairings/{pairId} {

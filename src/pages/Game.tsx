@@ -8,6 +8,7 @@ import Chat from '../components/Chat';
 import MoveList from '../components/MoveList';
 import PlayerBar from '../components/PlayerBar';
 import ReportButton from '../components/ReportButton';
+import { recordArenaResult } from '../lib/arena';
 import { replay, resultText } from '../lib/chessUtil';
 import {
   abortGame,
@@ -51,12 +52,14 @@ export default function GamePage() {
   const ratingTried = useRef(false);
   const joinTried = useRef(false);
   const initialRematch = useRef<string | null | undefined>(undefined);
+  const arenaTried = useRef(false);
 
   useEffect(() => {
     prevLen.current = null;
     prevStatus.current = null;
     flaggedAt.current = -1;
     ratingTried.current = false;
+    arenaTried.current = false;
     joinTried.current = false;
     initialRematch.current = undefined;
     setViewPly(null);
@@ -124,6 +127,17 @@ export default function GamePage() {
     if (!colorOf(game, user.uid) || game.ratingApplied?.[user.uid]) return;
     ratingTried.current = true;
     applyRating(id, user.uid).catch((e) => console.error('Рейтинг не обновлён', e));
+  }, [game, user, id]);
+
+  // партия арены закончилась: записываем результат в таблицу и освобождаем место в подборе
+  useEffect(() => {
+    if (!game || !user || game.status !== 'finished' || !game.arenaId || arenaTried.current) return;
+    if (!colorOf(game, user.uid)) return;
+    arenaTried.current = true;
+    recordArenaResult(game.arenaId, id, user.uid).catch((e) => {
+      arenaTried.current = false;
+      console.error('Результат арены не записан', e);
+    });
   }, [game, user, id]);
 
   // переход в партию-реванш, когда она появилась
@@ -340,6 +354,9 @@ export default function GamePage() {
           )}
           {game.status === 'finished' && (
             <div className="row wrap actions">
+              {game.arenaId && myColor && (
+                <Link className="btn primary" to={`/arena/${game.arenaId}`}>⚔ Вернуться в арену</Link>
+              )}
               <Link className="btn" to={`/analysis?game=${id}`}>📈 Анализ партии</Link>
             </div>
           )}

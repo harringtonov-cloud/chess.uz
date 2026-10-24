@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
+import { createArena } from '../lib/arena';
+import { arenaPhase } from '../lib/arenaLogic';
 import { STATUS_LABEL, createTournament, useTournaments } from '../lib/tournaments';
 import { CATEGORY_LABEL, TIME_CONTROLS, tcLabel } from '../lib/timeControls';
 
@@ -17,6 +19,9 @@ export default function Tournaments() {
   const [tc, setTc] = useState('300+0');
   const [rounds, setRounds] = useState(5);
   const [maxPlayers, setMaxPlayers] = useState(16);
+  const [kind, setKind] = useState<'swiss' | 'arena'>('swiss');
+  const [startIn, setStartIn] = useState(10); // минут до начала арены
+  const [duration, setDuration] = useState(60); // длительность арены, минут
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -28,6 +33,18 @@ export default function Tournaments() {
     setBusy(true);
     setFormError('');
     try {
+      if (kind === 'arena') {
+        const aid = await createArena(profile, {
+          name,
+          description,
+          base,
+          inc,
+          startsAt: Date.now() + startIn * 60_000,
+          durationMin: duration,
+        });
+        nav(`/arena/${aid}`);
+        return;
+      }
       const id = await createTournament(profile, {
         name,
         description,
@@ -82,6 +99,13 @@ export default function Tournaments() {
               onChange={(e) => setDescription(e.target.value)}
             />
             <div className="row wrap">
+              <label className="muted">Вид турнира</label>
+              <select value={kind} onChange={(e) => setKind(e.target.value as 'swiss' | 'arena')}>
+                <option value="swiss">Швейцарская система (по турам)</option>
+                <option value="arena">Арена (играйте сколько хотите за время)</option>
+              </select>
+            </div>
+            <div className="row wrap">
               <label className="muted">Контроль времени</label>
               <select value={tc} onChange={(e) => setTc(e.target.value)}>
                 {FLAT_TC.map((t) => (
@@ -91,6 +115,22 @@ export default function Tournaments() {
                 ))}
               </select>
             </div>
+            {kind === 'arena' ? (
+              <div className="row wrap">
+                <label className="muted">Начало через</label>
+                <select value={startIn} onChange={(e) => setStartIn(Number(e.target.value))}>
+                  {[1, 5, 10, 30, 60, 180].map((m) => (
+                    <option key={m} value={m}>{m < 60 ? `${m} мин` : `${m / 60} ч`}</option>
+                  ))}
+                </select>
+                <label className="muted">Длительность</label>
+                <select value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
+                  {[15, 30, 45, 60, 90, 120, 180].map((m) => (
+                    <option key={m} value={m}>{m < 60 ? `${m} мин` : `${m / 60} ч`}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
             <div className="row wrap">
               <label className="muted">Туров (1–9)</label>
               <input
@@ -111,6 +151,7 @@ export default function Tournaments() {
                 required
               />
             </div>
+            )}
             <div className="row">
               <button className="btn primary" disabled={busy}>
                 {busy ? 'Создаю…' : 'Создать'}
@@ -133,23 +174,30 @@ export default function Tournaments() {
         {loading && <p className="muted">Загрузка…</p>}
         {error && <p className="error">{error}</p>}
         {!loading && !error && sorted.length === 0 && <p className="muted">Турниров пока нет — создайте первый.</p>}
-        {sorted.map((t) => (
+        {sorted.map((t) => {
+          const arena = t.type === 'arena' && t.startsAt !== undefined && t.endsAt !== undefined;
+          const link = arena ? `/arena/${t.id}` : `/tournament/${t.id}`;
+          const phase = arena ? arenaPhase(t.startsAt as number, t.endsAt as number, Date.now()) : null;
+          return (
           <div key={t.id} className="club-row">
             <div>
-              <Link to={`/tournament/${t.id}`}>
-                <b>{t.name}</b>
+              <Link to={link}>
+                <b>{arena ? '⚔ ' : ''}{t.name}</b>
               </Link>{' '}
               <span className="muted">
-                {STATUS_LABEL[t.status]} · {tcLabel({ base: t.base, inc: t.inc })} ({CATEGORY_LABEL[t.category]}) ·{' '}
-                {t.rounds} тур. · организатор {t.organizerName}
+                {arena
+                  ? `арена · ${phase === 'upcoming' ? 'скоро начнётся' : phase === 'running' ? 'идёт' : 'завершена'}`
+                  : STATUS_LABEL[t.status]} · {tcLabel({ base: t.base, inc: t.inc })} ({CATEGORY_LABEL[t.category]})
+                {arena ? '' : ` · ${t.rounds} тур.`} · организатор {t.organizerName}
               </span>
               {t.description && <div className="muted club-desc">{t.description}</div>}
             </div>
-            <Link className="btn small" to={`/tournament/${t.id}`}>
+            <Link className="btn small" to={link}>
               Открыть
             </Link>
           </div>
-        ))}
+          );
+        })}
       </section>
     </div>
   );
