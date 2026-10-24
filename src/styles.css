@@ -289,3 +289,11 @@ textarea { min-height: 70px; resize: vertical; }
 
 /* Тренировка дебютов */
 .trainer-stats { margin-top: 12px; gap: 16px; }
+/* Обзор партии */
+.review-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+.review-table th { text-align: right; font-weight: 600; color: var(--muted); padding: 2px 6px; }
+.review-table td { text-align: right; padding: 2px 6px; }
+.review-table td:first-child, .review-table th:first-child { text-align: left; }
+.review-moments { justify-content: space-between; align-items: center; margin: 6px 0; }
+.q-book { color: #9aa7b8; }
+.move-detail.retry { border-left: 3px solid var(--accent); padding-left: 10px; }
