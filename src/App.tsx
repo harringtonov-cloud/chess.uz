@@ -4,6 +4,7 @@ import SiteBanners from './components/SiteBanners';
 import { ModerationProvider } from './ModerationContext';
 import { NotificationsProvider } from './NotificationsContext';
 import Admin from './pages/Admin';
+import ArenaPage from './pages/ArenaPage';
 import Analysis from './pages/Analysis';
 import Bots from './pages/Bots';
 import ClubPage from './pages/ClubPage';
@@ -49,6 +50,7 @@ export default function App() {
           <Route path="/clubs" element={<Clubs />} />
           <Route path="/tournaments" element={<Tournaments />} />
           <Route path="/tournament/:id" element={<TournamentPage />} />
+          <Route path="/arena/:id" element={<ArenaPage />} />
           <Route path="/club/:id" element={<ClubPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<Admin />} />

@@ -279,3 +279,7 @@ textarea { min-height: 70px; resize: vertical; }
 .bar-label { width: 280px; max-width: 45%; font-size: 14px; }
 .bar-track { flex: 1; height: 10px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
 .bar-fill { display: block; height: 100%; background: var(--accent); }
+
+/* Арена-турниры */
+.arena-timer { font-size: 22px; margin: 8px 0; }
+.table tr.me td { background: rgba(255, 235, 59, 0.08); }

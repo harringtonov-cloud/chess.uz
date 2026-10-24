@@ -52,6 +52,8 @@ export interface GameDoc {
   takebackOffer?: Color | null;
   /** Ежедневная партия: base — это лимит на ход в секундах (дни × 86400), без добавки */
   daily?: boolean;
+  /** Партия сыграна в арена-турнире с этим id */
+  arenaId?: string;
   rematchOffer: Color | null;
   rematch: string | null;
   ratingApplied: Record<string, boolean>;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { firebaseConfigured } from '../firebase';
 import { standings } from '../lib/swiss';
@@ -134,6 +134,7 @@ export default function TournamentPage() {
       </div>
     );
   }
+  if (t.type === 'arena') return <Navigate to={`/arena/${t.id}`} replace />;
   const tour = t;
   const organizer = Boolean(user && user.uid === tour.organizerId);
   const joined = Boolean(user && players.some((p) => p.uid === user.uid));
