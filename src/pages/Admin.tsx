@@ -8,6 +8,7 @@ import { loadSiteStats, saveAnnouncement, useAnnouncement, useReports } from '..
 import type { SiteStats, Staff } from '../lib/moderation';
 import { REASON_INFO, REASON_ORDER, reportStats } from '../lib/moderationLogic';
 import type { AnnouncementLevel } from '../lib/moderationLogic';
+import AnticheatTab from './admin/AnticheatTab';
 import LogTab from './admin/LogTab';
 import PlayerPanel from './admin/PlayerPanel';
 import PlayersTab from './admin/PlayersTab';
@@ -15,12 +16,13 @@ import ReportsTab from './admin/ReportsTab';
 import SanctionsTab from './admin/SanctionsTab';
 import StaffTab from './admin/StaffTab';
 
-type Tab = 'overview' | 'reports' | 'players' | 'sanctions' | 'log' | 'announce' | 'staff';
+type Tab = 'overview' | 'reports' | 'players' | 'anticheat' | 'sanctions' | 'log' | 'announce' | 'staff';
 
 const TABS: { id: Tab; label: string; adminOnly?: boolean; ownerOnly?: boolean }[] = [
   { id: 'overview', label: 'Обзор' },
   { id: 'reports', label: 'Жалобы' },
   { id: 'players', label: 'Игроки' },
+  { id: 'anticheat', label: '🔍 Античит' },
   { id: 'sanctions', label: 'Санкции' },
   { id: 'log', label: 'Журнал' },
   { id: 'announce', label: 'Объявление', adminOnly: true },
@@ -30,8 +32,10 @@ const TABS: { id: Tab; label: string; adminOnly?: boolean; ownerOnly?: boolean }
 export default function Admin() {
   const { user, loading } = useAuth();
   const { staff, role } = useModeration();
-  const [tab, setTab] = useState<Tab>('overview');
   const [params] = useSearchParams();
+  // ссылка /admin?game=ID или ?games=ID1,ID2 открывает вкладку античита с этими партиями
+  const checkIds = params.get('games') ?? params.get('game') ?? '';
+  const [tab, setTab] = useState<Tab>(checkIds ? 'anticheat' : 'overview');
   const [player, setPlayer] = useState<string | null>(params.get('player'));
 
   if (!firebaseConfigured) return <div className="card">Админ-панель доступна после подключения Firebase.</div>;
@@ -69,6 +73,9 @@ export default function Admin() {
         {tab === 'overview' && <Overview />}
         {tab === 'reports' && <ReportsTab staff={staff} onOpenPlayer={open} />}
         {tab === 'players' && <PlayersTab onOpenPlayer={open} />}
+        {tab === 'anticheat' && (
+          <AnticheatTab staff={staff} initial={checkIds.split(',').join('\n')} onOpenPlayer={open} />
+        )}
         {tab === 'sanctions' && <SanctionsTab staff={staff} onOpenPlayer={open} />}
         {tab === 'log' && <LogTab />}
         {tab === 'announce' && role === 'admin' && <Announce staff={staff} />}

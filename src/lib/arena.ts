@@ -153,6 +153,8 @@ export async function tryPair(
       rematch: null,
       ratingApplied: {},
       ratingDelta: {},
+      times: [],
+      blurs: { white: 0, black: 0 },
       heartbeat: now,
       createdAt: serverTimestamp(),
     });

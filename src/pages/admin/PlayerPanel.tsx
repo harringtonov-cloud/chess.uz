@@ -160,6 +160,20 @@ export default function PlayerPanel({ uid, staff, onClose }: { uid: string; staf
       <ReportList items={data.reportsBy} now={now} showWho="target" />
 
       <h4>Последние партии</h4>
+      {data.games.filter(({ g }) => g.status === 'finished' && g.moves.length >= 20).length > 0 && (
+        <p>
+          <Link
+            className="btn small"
+            to={`/admin?games=${data.games
+              .filter(({ g }) => g.status === 'finished' && g.moves.length >= 20)
+              .slice(0, 5)
+              .map(({ id }) => id)
+              .join(',')}`}
+          >
+            🔍 Проверить последние партии на читы
+          </Link>
+        </p>
+      )}
       {data.games.length === 0 ? (
         <p className="muted">Партий нет</p>
       ) : (

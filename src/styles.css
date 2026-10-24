@@ -303,3 +303,13 @@ textarea { min-height: 70px; resize: vertical; }
 /* Форум */
 .forum-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
 .forum-reply { border-top: 1px solid var(--panel-2); padding: 8px 0; }
+
+/* Античит */
+.anticheat-report { border-top: 1px solid var(--panel-2); margin-top: 14px; padding-top: 8px; }
+.anticheat-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.anticheat-side { border: 1px solid var(--panel-2); border-radius: 8px; padding: 10px; }
+.anticheat-score { font-size: 18px; margin: 4px 0 8px; }
+.anticheat-reasons { margin: 8px 0; padding-left: 18px; }
+.anticheat-side.level-watch { border-color: #f0c040; }
+.anticheat-side.level-suspicious { border-color: #f08a30; }
+.anticheat-side.level-high { border-color: var(--danger); }

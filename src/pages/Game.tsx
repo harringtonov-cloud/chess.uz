@@ -26,10 +26,12 @@ import {
   joinGame,
   makeMove,
   offerDraw,
+  recordBlur,
   offerTakeback,
   requestRematch,
   resign,
 } from '../lib/games';
+import { shouldCountBlur } from '../lib/anticheat';
 import { playSound } from '../lib/sound';
 import { gameCategoryLabel, tcLabel } from '../lib/timeControls';
 import type { GameDoc } from '../lib/types';
@@ -120,6 +122,27 @@ export default function GamePage() {
     if (prevStatus.current && prevStatus.current !== 'finished' && game.status === 'finished') playSound('end');
     prevStatus.current = game.status;
   }, [game]);
+
+  // античит: считаем уходы со вкладки в свой ход (на каждый ход максимум раз в 3 секунды)
+  const lastBlurAt = useRef<number | null>(null);
+  const blurState = useRef({ active: false, myTurn: false, color: null as 'white' | 'black' | null });
+  blurState.current = {
+    active: game?.status === 'active',
+    myTurn: Boolean(game && myColor && (game.moves.length % 2 === 0) === (myColor === 'white')),
+    color: myColor,
+  };
+  useEffect(() => {
+    const onHide = () => {
+      const s = blurState.current;
+      if (document.visibilityState !== 'hidden' || !s.color) return;
+      const now = Date.now();
+      if (!shouldCountBlur({ active: s.active, myTurn: s.myTurn, lastCountedAt: lastBlurAt.current }, now)) return;
+      lastBlurAt.current = now;
+      recordBlur(id, s.color).catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
+  }, [id]);
 
   // рейтинг после окончания партии
   useEffect(() => {

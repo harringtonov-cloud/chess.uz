@@ -381,6 +381,11 @@ export async function deleteGameChatMessage(
   await writeLog(staff, 'delete_message', author, text);
 }
 
+/** Запись в журнал о проверке партии античитом (чтобы было видно, кто и что проверял). */
+export async function logAnticheat(staff: Staff, target: PlayerRef | null, detail: string): Promise<void> {
+  await writeLog(staff, 'anticheat', target, detail);
+}
+
 /** Запись в журнал об удалении сообщения форума сотрудником. */
 export async function logForumDelete(staff: Staff, author: PlayerRef, detail: string): Promise<void> {
   await writeLog(staff, 'delete_message', author, `[форум] ${detail}`);
