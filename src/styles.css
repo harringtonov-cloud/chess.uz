@@ -279,3 +279,7 @@ textarea { min-height: 70px; resize: vertical; }
 .bar-label { width: 280px; max-width: 45%; font-size: 14px; }
 .bar-track { flex: 1; height: 10px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
 .bar-fill { display: block; height: 100%; background: var(--accent); }
+
+/* Форум */
+.forum-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
+.forum-reply { border-top: 1px solid var(--panel-2); padding: 8px 0; }

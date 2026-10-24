@@ -36,6 +36,7 @@ export default function Navbar() {
         <NavLink to="/leaderboard">Рейтинг</NavLink>
         {firebaseConfigured && <NavLink to="/tournaments">Турниры</NavLink>}
         {firebaseConfigured && <NavLink to="/clubs">Клубы</NavLink>}
+        {firebaseConfigured && <NavLink to="/forum">Форум</NavLink>}
         {firebaseConfigured && user && (
           <NavLink to="/friends">
             Друзья{pending > 0 && <span className="badge">{pending}</span>}
