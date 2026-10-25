@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import Board from '../components/Board';
 import MoveList from '../components/MoveList';
+import OpeningStats from '../components/OpeningStats';
 import { replay, uciToMove } from '../lib/chessUtil';
 import { OPENINGS, continuations, openingName } from '../lib/openings';
 import { playSound } from '../lib/sound';
@@ -42,6 +43,17 @@ export default function Openings() {
   function playUci(uci: string) {
     const m = uciToMove(uci);
     play(m.from, m.to, m.promotion);
+  }
+
+  /** Ход из таблицы статистики (SAN) */
+  function playSan(san: string) {
+    try {
+      const mv = replay(moves).move(san);
+      setMoves([...moves, mv.san]);
+      playSound(mv.san.includes('x') ? 'capture' : 'move');
+    } catch {
+      /* ход из чужой базы не подошёл к позиции: игнорируем */
+    }
   }
 
   function open(line: string) {
@@ -113,6 +125,7 @@ export default function Openings() {
             })}
           </div>
         </div>
+        <OpeningStats fen={chess.fen()} moves={moves} onPick={playSan} />
         <div className="card">
           <h4>Найти дебют по названию</h4>
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Например: сицилианская, Найдорф" />
@@ -123,7 +136,7 @@ export default function Openings() {
               </button>
             ))}
           </div>
-          <p className="muted">Справочник содержит {OPENINGS.length} основных дебютных систем и вариантов. Статистики побед пока нет.</p>
+          <p className="muted">Справочник содержит {OPENINGS.length} основных дебютных систем и вариантов.</p>
         </div>
       </div>
     </div>
