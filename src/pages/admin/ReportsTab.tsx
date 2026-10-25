@@ -127,7 +127,8 @@ function ReportCard({
         <button className="link-btn" onClick={() => onOpenPlayer(r.reporterUid)}>{r.reporterName}</button>
         {r.gameId && (
           <>
-            {' '}· <Link to={`/game/${r.gameId}`}>партия</Link>
+            {' '}· <Link to={`/game/${r.gameId}`}>партия</Link>{' '}
+            (<Link to={`/admin?game=${r.gameId}`}>🔍 проверить</Link>)
           </>
         )}
       </div>

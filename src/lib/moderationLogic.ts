@@ -304,7 +304,7 @@ export function restrictions(s: Sanction | null | undefined, now: number): { ban
 
 // ---------- Журнал действий ----------
 
-export type LogKind = 'ban' | 'mute' | 'unban' | 'warn' | 'resolve' | 'dismiss' | 'reset_ratings' | 'delete_message' | 'announce' | 'role_grant' | 'role_revoke';
+export type LogKind = 'ban' | 'mute' | 'unban' | 'warn' | 'resolve' | 'dismiss' | 'reset_ratings' | 'delete_message' | 'announce' | 'role_grant' | 'role_revoke' | 'anticheat';
 
 export const LOG_LABEL: Record<LogKind, string> = {
   ban: 'Бан',
@@ -315,6 +315,7 @@ export const LOG_LABEL: Record<LogKind, string> = {
   dismiss: 'Жалоба отклонена',
   reset_ratings: 'Сброс рейтингов',
   delete_message: 'Удалено сообщение',
+  anticheat: 'Античит-проверка',
   announce: 'Объявление сайта',
   role_grant: 'Назначен сотрудник',
   role_revoke: 'Снят сотрудник',

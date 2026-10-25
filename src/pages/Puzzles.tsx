@@ -9,36 +9,8 @@ import { uciToMove } from '../lib/chessUtil';
 import { FALLBACK, fetchPuzzle } from '../lib/puzzleApi';
 import type { Puzzle } from '../lib/puzzleApi';
 import { expectedScore } from '../lib/elo';
+import { THEME_CHOICES, pickFallback, sanitizeTheme, themeLabel } from '../lib/puzzleThemes';
 import { playSound } from '../lib/sound';
-
-const THEME_RU: Record<string, string> = {
-  mateIn1: 'Мат в 1 ход',
-  mateIn2: 'Мат в 2 хода',
-  mateIn3: 'Мат в 3 хода',
-  mate: 'Мат',
-  fork: 'Вилка',
-  pin: 'Связка',
-  skewer: 'Линейный удар',
-  discoveredAttack: 'Открытое нападение',
-  deflection: 'Отвлечение',
-  attraction: 'Завлечение',
-  sacrifice: 'Жертва',
-  backRankMate: 'Мат на последней горизонтали',
-  endgame: 'Эндшпиль',
-  middlegame: 'Миттельшпиль',
-  opening: 'Дебют',
-  short: 'Короткая',
-  long: 'Длинная',
-  veryLong: 'Очень длинная',
-  advantage: 'Преимущество',
-  crushing: 'Решающее преимущество',
-  hangingPiece: 'Незащищённая фигура',
-  defensiveMove: 'Защита',
-  quietMove: 'Тихий ход',
-  promotion: 'Превращение',
-  trappedPiece: 'Пойманная фигура',
-  zugzwang: 'Цугцванг',
-};
 
 export default function Puzzles() {
   const { profile, user } = useAuth();
@@ -55,11 +27,20 @@ export default function Puzzles() {
   const [best, setBest] = useState(() => Number(localStorage.getItem('puzzle_best') ?? 0));
   const [delta, setDelta] = useState<number | null>(null);
   const [isDaily, setIsDaily] = useState(false);
+  // тема тренировки: пустая — любые задачи
+  const [theme, setTheme] = useState(() => {
+    try {
+      return sanitizeTheme(localStorage.getItem('puzzle_theme'));
+    } catch {
+      return '';
+    }
+  });
+  const [themeMiss, setThemeMiss] = useState(false);
   const rated = useRef(false);
   const fallbackIdx = useRef(0);
   const busy = useRef(false);
 
-  const next = useCallback(async (daily = false) => {
+  const next = useCallback(async (daily = false, topic = theme) => {
     setIsDaily(daily);
     setStatus('loading');
     setMsg('');
@@ -70,21 +51,37 @@ export default function Puzzles() {
     setStep(0);
     rated.current = false;
     let p: Puzzle;
+    setThemeMiss(false);
     try {
-      p = await fetchPuzzle(daily ? 'daily' : 'next');
+      p = await fetchPuzzle(daily ? 'daily' : 'next', topic);
       setOffline(false);
     } catch {
-      p = FALLBACK[fallbackIdx.current++ % FALLBACK.length];
+      const f = pickFallback(FALLBACK, daily ? '' : topic, fallbackIdx.current++);
+      p = f.puzzle;
+      setThemeMiss(!f.matched);
       setOffline(true);
     }
     setPuzzle(p);
     setFen(p.fen);
     setStatus('playing');
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     void next();
-  }, [next]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function chooseTheme(value: string) {
+    const t = sanitizeTheme(value);
+    setTheme(t);
+    try {
+      localStorage.setItem('puzzle_theme', t);
+    } catch {
+      /* localStorage может быть недоступен — тема просто не запомнится */
+    }
+    setStreak(0);
+    void next(false, t);
+  }
 
   async function applyRating(success: boolean) {
     if (rated.current || !puzzle) return;
@@ -183,7 +180,22 @@ export default function Puzzles() {
         <div className="card">
           <h3>Головоломки</h3>
           <Link className="btn small" to="/rush">⚡ Puzzle Rush на время</Link>{' '}
+          <Link className="btn small" to="/battle">⚔ Puzzle Battle</Link>{' '}
           <Link className="btn small" to="/vision">👁 Шахматное зрение</Link>
+          <div className="row wrap">
+            <label className="muted" htmlFor="puzzle-theme">Тема</label>
+            <select id="puzzle-theme" value={theme} onChange={(e) => chooseTheme(e.target.value)}>
+              {['Любые', 'Маты', 'Тактика', 'Стадии партии', 'Характер задачи'].map((g) => (
+                <optgroup key={g} label={g === 'Любые' ? 'Все задачи' : g}>
+                  {THEME_CHOICES.filter((c) => c.group === g).map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.value ? themeLabel(c.value) : 'Любые темы'}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
           {profile && <div className="muted">Ваш рейтинг задач: <b>{profile.ratings.puzzle}</b></div>}
           {puzzle && (
             <div className="muted">
@@ -191,7 +203,10 @@ export default function Puzzles() {
             </div>
           )}
           {offline && (
-            <p className="notice">База задач Lichess недоступна, показаны запасные задачи. Рейтинг не меняется.</p>
+            <p className="notice">
+              База задач Lichess недоступна, показаны запасные задачи. Рейтинг не меняется.
+              {themeMiss ? ' Запасных задач на выбранную тему нет, показана другая.' : ''}
+            </p>
           )}
           {status === 'playing' && (
             <p>
@@ -210,7 +225,7 @@ export default function Puzzles() {
           {puzzle && (
             <div className="tags">
               {puzzle.themes.slice(0, 6).map((t) => (
-                <span key={t} className="tag">{THEME_RU[t] ?? t}</span>
+                <span key={t} className="tag">{themeLabel(t)}</span>
               ))}
             </div>
           )}

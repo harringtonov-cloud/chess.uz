@@ -8,6 +8,7 @@ import Chat from '../components/Chat';
 import MoveList from '../components/MoveList';
 import PlayerBar from '../components/PlayerBar';
 import ReportButton from '../components/ReportButton';
+import { recordArenaResult } from '../lib/arena';
 import { replay, resultText } from '../lib/chessUtil';
 import {
   abortGame,
@@ -25,10 +26,14 @@ import {
   joinGame,
   makeMove,
   offerDraw,
+  recordBlur,
   offerTakeback,
   requestRematch,
   resign,
 } from '../lib/games';
+import { shouldCountBlur } from '../lib/anticheat';
+import { downloadText } from '../lib/download';
+import { gamePgn, gamePgnFile } from '../lib/gamePgn';
 import { playSound } from '../lib/sound';
 import { gameCategoryLabel, tcLabel } from '../lib/timeControls';
 import type { GameDoc } from '../lib/types';
@@ -44,6 +49,7 @@ export default function GamePage() {
   const [flipped, setFlipped] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [pgnCopied, setPgnCopied] = useState(false);
 
   const prevLen = useRef<number | null>(null);
   const prevStatus = useRef<string | null>(null);
@@ -51,12 +57,14 @@ export default function GamePage() {
   const ratingTried = useRef(false);
   const joinTried = useRef(false);
   const initialRematch = useRef<string | null | undefined>(undefined);
+  const arenaTried = useRef(false);
 
   useEffect(() => {
     prevLen.current = null;
     prevStatus.current = null;
     flaggedAt.current = -1;
     ratingTried.current = false;
+    arenaTried.current = false;
     joinTried.current = false;
     initialRematch.current = undefined;
     setViewPly(null);
@@ -118,12 +126,44 @@ export default function GamePage() {
     prevStatus.current = game.status;
   }, [game]);
 
+  // античит: считаем уходы со вкладки в свой ход (на каждый ход максимум раз в 3 секунды)
+  const lastBlurAt = useRef<number | null>(null);
+  const blurState = useRef({ active: false, myTurn: false, color: null as 'white' | 'black' | null });
+  blurState.current = {
+    active: game?.status === 'active',
+    myTurn: Boolean(game && myColor && (game.moves.length % 2 === 0) === (myColor === 'white')),
+    color: myColor,
+  };
+  useEffect(() => {
+    const onHide = () => {
+      const s = blurState.current;
+      if (document.visibilityState !== 'hidden' || !s.color) return;
+      const now = Date.now();
+      if (!shouldCountBlur({ active: s.active, myTurn: s.myTurn, lastCountedAt: lastBlurAt.current }, now)) return;
+      lastBlurAt.current = now;
+      recordBlur(id, s.color).catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', onHide);
+    return () => document.removeEventListener('visibilitychange', onHide);
+  }, [id]);
+
   // рейтинг после окончания партии
   useEffect(() => {
     if (!game || !user || game.status !== 'finished' || ratingTried.current) return;
     if (!colorOf(game, user.uid) || game.ratingApplied?.[user.uid]) return;
     ratingTried.current = true;
     applyRating(id, user.uid).catch((e) => console.error('Рейтинг не обновлён', e));
+  }, [game, user, id]);
+
+  // партия арены закончилась: записываем результат в таблицу и освобождаем место в подборе
+  useEffect(() => {
+    if (!game || !user || game.status !== 'finished' || !game.arenaId || arenaTried.current) return;
+    if (!colorOf(game, user.uid)) return;
+    arenaTried.current = true;
+    recordArenaResult(game.arenaId, id, user.uid).catch((e) => {
+      arenaTried.current = false;
+      console.error('Результат арены не записан', e);
+    });
   }, [game, user, id]);
 
   // переход в партию-реванш, когда она появилась
@@ -244,6 +284,8 @@ export default function GamePage() {
           movable={active && viewPly === null && myColor ? myColor : null}
           lastMove={view.last}
           onMove={(f, t, p) => onMove(f, t, p)}
+          premove
+          confirmable
         />
         {bar(bottom)}
       </div>
@@ -338,7 +380,27 @@ export default function GamePage() {
           )}
           {game.status === 'finished' && (
             <div className="row wrap actions">
+              {game.arenaId && myColor && (
+                <Link className="btn primary" to={`/arena/${game.arenaId}`}>⚔ Вернуться в арену</Link>
+              )}
               <Link className="btn" to={`/analysis?game=${id}`}>📈 Анализ партии</Link>
+            </div>
+          )}
+          {game.moves.length > 0 && (
+            <div className="row wrap actions">
+              <button
+                className="btn small"
+                onClick={() => {
+                  navigator.clipboard?.writeText(gamePgn(game, id));
+                  setPgnCopied(true);
+                  setTimeout(() => setPgnCopied(false), 2000);
+                }}
+              >
+                {pgnCopied ? 'PGN скопирован ✓' : '📋 Копировать PGN'}
+              </button>
+              <button className="btn small" onClick={() => downloadText(gamePgnFile(game), gamePgn(game, id))}>
+                ⬇ Скачать PGN
+              </button>
             </div>
           )}
           {error && <p className="error">{error}</p>}

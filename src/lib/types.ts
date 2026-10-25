@@ -52,6 +52,12 @@ export interface GameDoc {
   takebackOffer?: Color | null;
   /** Ежедневная партия: base — это лимит на ход в секундах (дни × 86400), без добавки */
   daily?: boolean;
+  /** Миллисекунды, потраченные на каждый ход (по порядку ходов); у старых партий поля нет */
+  times?: number[];
+  /** Сколько раз игрок уходил со вкладки во время своего хода */
+  blurs?: { white?: number; black?: number };
+  /** Партия сыграна в арена-турнире с этим id */
+  arenaId?: string;
   rematchOffer: Color | null;
   rematch: string | null;
   ratingApplied: Record<string, boolean>;

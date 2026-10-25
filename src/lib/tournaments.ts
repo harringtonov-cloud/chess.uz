@@ -36,6 +36,11 @@ export interface Tournament {
   maxPlayers: number;
   status: TournamentStatus;
   currentRound: number;
+  /** Не задан у обычных (швейцарских) турниров */
+  type?: 'swiss' | 'arena';
+  /** Только у арены: начало и конец, мс с эпохи */
+  startsAt?: number;
+  endsAt?: number;
   createdAt: { toMillis: () => number } | null;
 }
 
