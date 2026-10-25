@@ -5,6 +5,7 @@ import MoveList from '../components/MoveList';
 import PlayerBar from '../components/PlayerBar';
 import { Chess } from 'chess.js';
 import { BOTS, ODDS_LABEL, oddsFen } from '../lib/bots';
+import { findEndgame } from '../lib/endgames';
 import type { Bot, Odds } from '../lib/bots';
 import { gameOverInfo, replayFrom, resultText, uciToMove, uciToSan } from '../lib/chessUtil';
 import { getEngine } from '../lib/engine';
@@ -23,10 +24,24 @@ const BOT_TC = [
   { label: '15+10', base: 900, inc: 10 },
 ];
 
+/** Упражнение из тренировки эндшпилей: читается один раз при открытии страницы. */
+function takeEndgame() {
+  try {
+    const id = sessionStorage.getItem('bot_endgame');
+    if (id) sessionStorage.removeItem('bot_endgame');
+    return findEndgame(id);
+  } catch {
+    return null;
+  }
+}
+
 export default function Bots() {
   const nav = useNavigate();
-  const [bot, setBot] = useState<Bot>(BOTS[2]);
-  const [choice, setChoice] = useState<ColorChoice>('white');
+  const endgameRef = useRef<ReturnType<typeof takeEndgame> | undefined>(undefined);
+  if (endgameRef.current === undefined) endgameRef.current = takeEndgame();
+  const endgame = endgameRef.current;
+  const [bot, setBot] = useState<Bot>(() => BOTS.find((b) => b.id === endgame?.bot) ?? BOTS[2]);
+  const [choice, setChoice] = useState<ColorChoice>(endgame?.color ?? 'white');
   const [human, setHuman] = useState<'white' | 'black'>('white');
   const [started, setStarted] = useState(false);
   const [moves, setMoves] = useState<string[]>([]);
@@ -43,6 +58,7 @@ export default function Bots() {
   const [tcIdx, setTcIdx] = useState(0);
   const [odds, setOdds] = useState<Odds>('none');
   const [customFen, setCustomFen] = useState(() => {
+    if (endgame) return endgame.fen;
     try {
       const f = sessionStorage.getItem('bot_fen');
       if (f) sessionStorage.removeItem('bot_fen');
@@ -137,6 +153,12 @@ export default function Bots() {
     prevLenRef.current = moves.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moves.length]);
+
+  // упражнение из тренировки эндшпилей начинается сразу
+  useEffect(() => {
+    if (endgame) start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function start() {
     const color = choice === 'random' ? (Math.random() < 0.5 ? 'white' : 'black') : choice;
@@ -327,6 +349,13 @@ export default function Bots() {
             Против: {bot.avatar} {bot.name} ({bot.elo}) · вы за {human === 'white' ? 'белых' : 'чёрных'}
             {botToMove && thinking ? ` · ${botColor === 'white' ? 'белые' : 'чёрные'} думают…` : ''}
           </div>
+          {endgame && started && (
+            <p>
+              <b>{endgame.title}.</b> {endgame.goal}
+              <br />
+              <span className="muted">{endgame.tip}</span>
+            </p>
+          )}
           {result && <div className="result-banner">{result}</div>}
           <MoveList moves={moves} current={moves.length} />
           <div className="row wrap actions">
