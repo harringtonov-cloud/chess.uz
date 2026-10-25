@@ -16,10 +16,22 @@ import {
   useFriendships,
 } from '../lib/social';
 import { fetchPlayerGames } from '../lib/playerGames';
+import { ratingView } from '../lib/glicko2';
 import ProfileExtras from '../components/ProfileExtras';
 import ReportButton from '../components/ReportButton';
 import { useModeration } from '../ModerationContext';
 import type { GameDoc, Profile as ProfileDoc } from '../lib/types';
+
+/** Рейтинг с пометкой «?», пока он ещё уточняется (Glicko-2: большая неопределённость). */
+function RatingText({ p, c }: { p: ProfileDoc; c: 'bullet' | 'blitz' | 'rapid' | 'classical' }) {
+  const v = ratingView(p.ratings?.[c] ?? 1200, p.glicko?.[c], p.stats?.games ?? 0);
+  return (
+    <b title={`Неопределённость рейтинга: ±${v.rd}${v.provisional ? ' (рейтинг ещё уточняется)' : ''}`}>
+      {v.rating}
+      {v.provisional && '?'}
+    </b>
+  );
+}
 
 export default function Profile() {
   const { uid = '' } = useParams();
@@ -171,7 +183,7 @@ export default function Profile() {
           {(['bullet', 'blitz', 'rapid', 'classical'] as const).map((c) => (
             <div key={c} className="rating-box">
               <span className="muted">{CATEGORY_LABEL[c]}</span>
-              <b>{shown.ratings?.[c] ?? 1200}</b>
+              <RatingText p={shown} c={c} />
             </div>
           ))}
           <div className="rating-box">
@@ -179,6 +191,10 @@ export default function Profile() {
             <b>{shown.ratings?.puzzle ?? 1200}</b>
           </div>
         </div>
+        <p className="muted small-note">
+          Рейтинг считается по системе Glicko-2. Знак «?» значит, что рейтинг ещё уточняется (мало партий или давно не играли);
+          наведите на число, чтобы увидеть точность ±.
+        </p>
         <div className="muted">
           Партий: {shown.stats?.games ?? 0} · побед {shown.stats?.wins ?? 0} · ничьих {shown.stats?.draws ?? 0} ·
           поражений {shown.stats?.losses ?? 0}

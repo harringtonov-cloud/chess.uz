@@ -59,6 +59,7 @@ function normalizeProfile(data: Partial<Profile>, user: User): Profile {
     country: typeof data.country === 'string' ? data.country : '',
     ratings: { ...base.ratings, ...(data.ratings ?? {}) },
     stats: { ...base.stats, ...(data.stats ?? {}) },
+    glicko: data.glicko && typeof data.glicko === 'object' ? data.glicko : undefined,
   };
 }
 

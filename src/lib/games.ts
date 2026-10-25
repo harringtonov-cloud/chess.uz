@@ -16,7 +16,7 @@ import {
 import { db } from '../firebase';
 import { gameOverInfo, replay } from './chessUtil';
 import { notify } from './notifications';
-import { ratingDelta } from './elo';
+import { rateGame, readStored } from './glicko2';
 import { categoryOf } from './timeControls';
 import type { TimeControl } from './timeControls';
 import { START_FEN } from './types';
@@ -401,11 +401,28 @@ export async function applyRating(gameId: string, uid: string): Promise<void> {
     }
     const score = g.result === '1/2-1/2' ? 0.5 : (g.result === '1-0') === (color === 'white') ? 1 : 0;
     const own = u.ratings?.[g.category] ?? 1200;
+    // рейтинг соперника — каким он был на начало партии; его неопределённость (RD) берём из его профиля
+    const oppColor = color === 'white' ? 'black' : 'white';
+    const oppUid = g[oppColor];
     const opp = color === 'white' ? g.blackRating : g.whiteRating;
-    const delta = ratingDelta(own, opp, score, u.stats?.games ?? 0);
+    const oppSnap = oppUid ? await tx.get(doc(db, 'users', oppUid)) : null;
+    const oppProfile = oppSnap?.exists() ? (oppSnap.data() as Profile) : null;
+    const oppStored = readStored(
+      oppProfile?.glicko?.[g.category],
+      opp,
+      oppProfile?.stats?.games ?? 0,
+    ).glicko;
+    const res = rateGame(
+      { rating: own, stored: u.glicko?.[g.category], gamesPlayed: u.stats?.games ?? 0 },
+      { rating: opp, rd: oppStored.rd },
+      score,
+      Date.now(),
+    );
+    const delta = res.delta;
     const field = score === 1 ? 'wins' : score === 0 ? 'losses' : 'draws';
     tx.update(uRef, {
-      [`ratings.${g.category}`]: own + delta,
+      [`ratings.${g.category}`]: res.rating,
+      [`glicko.${g.category}`]: res.stored,
       'stats.games': increment(1),
       [`stats.${field}`]: increment(1),
     });

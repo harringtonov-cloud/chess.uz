@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
 import { db, firebaseConfigured } from '../firebase';
+import { ratingView } from '../lib/glicko2';
 import { CATEGORY_LABEL } from '../lib/timeControls';
 import type { Profile } from '../lib/types';
 
@@ -56,7 +57,12 @@ export default function Leaderboard() {
               <td>
                 <Link to={`/profile/${p.uid}`}>{p.name}</Link>
               </td>
-              <td>{p.ratings?.[tab] ?? 1200}</td>
+              <td>
+                {p.ratings?.[tab] ?? 1200}
+                {tab !== 'puzzle' &&
+                  ratingView(p.ratings?.[tab] ?? 1200, p.glicko?.[tab], p.stats?.games ?? 0).provisional &&
+                  '?'}
+              </td>
               <td>{p.stats?.games ?? 0}</td>
             </tr>
           ))}

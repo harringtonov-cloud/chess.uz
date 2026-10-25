@@ -16,6 +16,9 @@ export interface Stats {
   draws: number;
 }
 
+/** Неопределённость рейтинга (Glicko-2) по каждому виду игры; у старых профилей поля нет. */
+export type GlickoMap = Partial<Record<Category, { rd: number; vol: number; at: number }>>;
+
 export interface Profile {
   uid: string;
   name: string;
@@ -23,6 +26,7 @@ export interface Profile {
   country: string;
   ratings: Ratings;
   stats: Stats;
+  glicko?: GlickoMap;
 }
 
 export interface GameDoc {
