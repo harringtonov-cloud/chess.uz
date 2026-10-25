@@ -330,3 +330,13 @@ textarea { min-height: 70px; resize: vertical; }
   .nav-backdrop { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 20; }
   body.menu-open { overflow: hidden; }
 }
+
+/* Статистика дебютов */
+.stat-bar { display: flex; height: 20px; border-radius: 4px; overflow: hidden; font-size: 12px; line-height: 20px; text-align: center; min-width: 120px; margin: 6px 0; }
+.stat-w { background: #e8e6df; color: #262421; }
+.stat-d { background: #8a8780; color: #fff; }
+.stat-b { background: #3b3935; color: #f0efe9; }
+.stat-table .stat-bar { margin: 0; }
+.stat-cell { width: 60%; }
+.stat-row { cursor: pointer; }
+.stat-row:hover { background: var(--panel-2); }
