@@ -1,12 +1,22 @@
+
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
+
 import App from './App';
 import { AuthProvider } from './AuthContext';
 import ErrorBoundary from './components/ErrorBoundary';
+
 import './styles.css';
 
-// StrictMode намеренно не используется: двойной запуск эффектов мешал бы
-// подписке на партию и созданию ожидающих партий в режиме разработки.
+// Подтверждаем запуск обновлённого приложения на Android.
+if (Capacitor.isNativePlatform()) {
+  CapacitorUpdater.notifyAppReady().catch((error) => {
+    console.error('Capgo notifyAppReady error:', error);
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
     <BrowserRouter>
