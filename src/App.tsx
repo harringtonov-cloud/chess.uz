@@ -21,6 +21,7 @@ import Login from './pages/Login';
 import NotificationsPage from './pages/Notifications';
 import OpeningTrainer from './pages/OpeningTrainer';
 import Openings from './pages/Openings';
+import Endgames from './pages/Endgames';
 import Profile from './pages/Profile';
 import PuzzleBattle from './pages/PuzzleBattle';
 import PuzzleRush from './pages/PuzzleRush';
@@ -51,6 +52,7 @@ export default function App() {
           <Route path="/vision" element={<Vision />} />
           <Route path="/openings" element={<Openings />} />
           <Route path="/openings/train" element={<OpeningTrainer />} />
+          <Route path="/endgames" element={<Endgames />} />
           <Route path="/analysis" element={<Analysis />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/friends" element={<Friends />} />
