@@ -228,6 +228,22 @@ service cloud.firestore {
     function isOrganizer(tid) {
       return signedIn() && get(tournamentDoc(tid)).data.organizerId == request.auth.uid;
     }
+    // Арена-турнир: обычный документ турнира с type = 'arena' и временем начала/конца (мс)
+    function isArena(tid) {
+      return get(tournamentDoc(tid)).data.get('type', '') == 'arena';
+    }
+    function arenaOpen(tid) {
+      return isArena(tid) && request.time.toMillis() < get(tournamentDoc(tid)).data.endsAt;
+    }
+    function gameDoc(gid) {
+      return /databases/$(database)/documents/games/$(gid);
+    }
+    // Партия создана для этой арены, и в ней играет указанный игрок
+    function arenaGameHas(tid, gid, uid) {
+      return gid is string
+        && getAfter(gameDoc(gid)).data.get('arenaId', '') == tid
+        && getAfter(gameDoc(gid)).data.participants.hasAll([uid]);
+    }
 
     match /tournaments/{tid} {
       allow read: if true;
@@ -244,6 +260,26 @@ service cloud.firestore {
         && request.resource.data.maxPlayers is int && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 64
         && request.resource.data.status == 'registration'
         && request.resource.data.currentRound == 0;
+      // Арена: от 10 минут до 3 часов, без туров
+      allow create: if signedIn()
+        && notBanned()
+        && request.resource.data.organizerId == request.auth.uid
+        && request.resource.data.get('type', '') == 'arena'
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 50
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 300
+        && request.resource.data.base is int && request.resource.data.base >= 30 && request.resource.data.base <= 10800
+        && request.resource.data.inc is int && request.resource.data.inc >= 0 && request.resource.data.inc <= 180
+        && request.resource.data.rounds == 0
+        && request.resource.data.maxPlayers is int && request.resource.data.maxPlayers >= 2 && request.resource.data.maxPlayers <= 500
+        && request.resource.data.status == 'registration'
+        && request.resource.data.currentRound == 0
+        && request.resource.data.startsAt is int
+        && request.resource.data.endsAt is int
+        && request.resource.data.endsAt - request.resource.data.startsAt >= 600000
+        && request.resource.data.endsAt - request.resource.data.startsAt <= 10800000
+        && request.resource.data.startsAt >= request.time.toMillis() - 300000;
       // Менять турнир (старт, следующий тур, завершение) может только организатор
       allow update: if signedIn()
         && resource.data.organizerId == request.auth.uid
@@ -258,11 +294,79 @@ service cloud.firestore {
           && request.resource.data.uid == request.auth.uid
           && request.resource.data.name is string
           && request.resource.data.name.size() <= 24
-          && get(tournamentDoc(tid)).data.status == 'registration';
+          && get(tournamentDoc(tid)).data.status == 'registration'
+          && !isArena(tid);
         allow delete: if signedIn() && (
-          (pid == request.auth.uid && get(tournamentDoc(tid)).data.status == 'registration')
+          (pid == request.auth.uid && get(tournamentDoc(tid)).data.status == 'registration' && !isArena(tid))
           || isOrganizer(tid)
         );
+
+        // Арена: записаться можно, пока она не закончилась
+        allow create: if signedIn()
+          && notBanned()
+          && pid == request.auth.uid
+          && arenaOpen(tid)
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'rating', 'waiting', 'paused', 'gameId', 'seenAt', 'joinedAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.name is string && request.resource.data.name.size() <= 24
+          && request.resource.data.rating is number
+          && request.resource.data.waiting == false
+          && request.resource.data.paused == false
+          && request.resource.data.gameId == null
+          && request.resource.data.seenAt is number;
+
+        allow update: if signedIn() && isArena(tid) && (
+          // сам игрок: пауза, «ищу соперника», отметка присутствия; партию себе ставит только
+          // вместе с созданием партии арены с самим собой в числе участников
+          (pid == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['waiting', 'paused', 'seenAt', 'gameId'])
+            && (request.resource.data.gameId == resource.data.gameId
+                || request.resource.data.gameId == null
+                || (resource.data.gameId == null && arenaOpen(tid)
+                    && arenaGameHas(tid, request.resource.data.gameId, request.auth.uid))))
+          // подбор: соперник записывает в документ ожидающего игрока id новой партии
+          || (pid != request.auth.uid
+            && notBanned()
+            && arenaOpen(tid)
+            && resource.data.waiting == true
+            && resource.data.paused == false
+            && resource.data.gameId == null
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['waiting', 'gameId'])
+            && request.resource.data.waiting == false
+            && arenaGameHas(tid, request.resource.data.gameId, pid)
+            && arenaGameHas(tid, request.resource.data.gameId, request.auth.uid))
+        );
+      }
+
+      // Итоги партий арены: каждый игрок записывает свой результат, только если такая же
+      // закончившаяся партия этой арены есть в базе
+      match /results/{rid} {
+        allow read: if true;
+        allow create: if signedIn()
+          && isArena(tid)
+          && request.resource.data.keys().hasOnly(['uid', 'gameId', 'result', 'opponent', 'color', 'at'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.gameId is string
+          && rid == request.resource.data.gameId + '_' + request.auth.uid
+          && request.resource.data.at is number
+          && request.resource.data.result in ['win', 'draw', 'loss']
+          && validArenaResult(tid, request.resource.data);
+        allow update, delete: if false;
+      }
+
+      function validArenaResult(arenaId, d) {
+        let g = get(gameDoc(d.gameId)).data;
+        return g.status == 'finished'
+          && g.get('arenaId', '') == arenaId
+          && (
+            (d.result == 'draw' && g.result == '1/2-1/2' && request.auth.uid in [g.white, g.black])
+            || (d.result == 'win'
+                && ((g.white == request.auth.uid && g.result == '1-0')
+                    || (g.black == request.auth.uid && g.result == '0-1')))
+            || (d.result == 'loss'
+                && ((g.white == request.auth.uid && g.result == '0-1')
+                    || (g.black == request.auth.uid && g.result == '1-0')))
+          );
       }
 
       match /pairings/{pairId} {
@@ -359,6 +463,112 @@ service cloud.firestore {
           && request.resource.data.text.size() <= 300;
         // удалять сообщения могут сотрудники модерации
         allow delete: if isMod();
+      }
+    }
+
+    // ---------- Puzzle Battle: дуэль на задачах ----------
+    // Создатель ждёт соперника (status = waiting), второй игрок заходит и запускает отсчёт,
+    // дальше каждый может менять только СВОЙ счёт: не больше чем на одну задачу за запись
+    // и не быстрее одной решённой задачи в 1,5 секунды. Подделать счёт всё равно можно (проверки
+    // на сервере нет), но накрутить его мгновенно правила не дадут.
+    match /puzzleBattles/{bid} {
+      allow read: if true;
+
+      allow create: if signedIn()
+        && notBanned()
+        && request.resource.data.keys().hasOnly(
+          ['players', 'names', 'status', 'puzzles', 'startAt', 'endsAt', 'scores', 'heartbeat', 'createdAt'])
+        && request.resource.data.players == [request.auth.uid]
+        && request.resource.data.status == 'waiting'
+        && request.resource.data.puzzles is list
+        && request.resource.data.puzzles.size() >= 8 && request.resource.data.puzzles.size() <= 40
+        && request.resource.data.startAt == null
+        && request.resource.data.endsAt == null
+        && request.resource.data.names.keys().hasOnly([request.auth.uid])
+        && request.resource.data.names[request.auth.uid] is string
+        && request.resource.data.names[request.auth.uid].size() <= 24
+        && request.resource.data.scores.keys().hasOnly([request.auth.uid])
+        && request.resource.data.scores[request.auth.uid].solved == 0
+        && request.resource.data.scores[request.auth.uid].mistakes == 0
+        && request.resource.data.heartbeat is number
+        && request.resource.data.createdAt == request.time;
+
+      allow update: if signedIn() && (
+        // пульс создателя, пока он ждёт
+        (resource.data.status == 'waiting'
+          && request.auth.uid in resource.data.players
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['heartbeat']))
+        // второй игрок заходит: отсчёт 5 секунд, бой 3 минуты
+        || (notBanned()
+          && resource.data.status == 'waiting'
+          && resource.data.players.size() == 1
+          && !(request.auth.uid in resource.data.players)
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['players', 'names', 'scores', 'status', 'startAt', 'endsAt'])
+          && request.resource.data.players == resource.data.players.concat([request.auth.uid])
+          && request.resource.data.status == 'active'
+          && request.resource.data.startAt is int
+          && request.resource.data.startAt >= request.time.toMillis() - 15000
+          && request.resource.data.startAt <= request.time.toMillis() + 30000
+          && request.resource.data.endsAt == request.resource.data.startAt + 180000
+          && request.resource.data.scores[request.auth.uid].solved == 0
+          && request.resource.data.scores[request.auth.uid].mistakes == 0)
+        // свой счёт: на одну задачу за запись, не после конца боя и не быстрее 1,5 с на задачу
+        || (resource.data.status == 'active'
+          && request.auth.uid in resource.data.players
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scores'])
+          && request.resource.data.scores.diff(resource.data.scores).affectedKeys().hasOnly([request.auth.uid])
+          && request.resource.data.scores[request.auth.uid].solved >= resource.data.scores[request.auth.uid].solved
+          && request.resource.data.scores[request.auth.uid].mistakes >= resource.data.scores[request.auth.uid].mistakes
+          && request.resource.data.scores[request.auth.uid].solved + request.resource.data.scores[request.auth.uid].mistakes
+               <= resource.data.scores[request.auth.uid].solved + resource.data.scores[request.auth.uid].mistakes + 1
+          && request.resource.data.scores[request.auth.uid].solved <= resource.data.puzzles.size()
+          && request.time.toMillis() <= resource.data.endsAt + 5000
+          && request.resource.data.scores[request.auth.uid].solved * 1500
+               <= request.time.toMillis() - resource.data.startAt + 1500)
+      );
+
+      // отменить поиск может создатель, пока никто не пришёл
+      allow delete: if signedIn()
+        && resource.data.status == 'waiting'
+        && request.auth.uid in resource.data.players;
+    }
+
+    // ---------- Форум ----------
+    // Темы и ответы: писать могут вошедшие игроки без мьюта, удалять — автор или сотрудники.
+    // Счётчик ответов в теме растёт только на единицу и только вместе с отметкой времени ответа.
+    match /forumPosts/{pid} {
+      allow read: if true;
+      allow create: if signedIn()
+        && notMuted()
+        && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'title', 'body', 'replyCount', 'lastReplyAt', 'createdAt'])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 24
+        && request.resource.data.title is string
+        && request.resource.data.title.size() >= 3 && request.resource.data.title.size() <= 100
+        && request.resource.data.body is string
+        && request.resource.data.body.size() >= 1 && request.resource.data.body.size() <= 2000
+        && request.resource.data.replyCount == 0
+        && request.resource.data.lastReplyAt == null
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn()
+        && notMuted()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount', 'lastReplyAt'])
+        && request.resource.data.replyCount == resource.data.replyCount + 1
+        && request.resource.data.lastReplyAt == request.time;
+      allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isMod());
+
+      match /replies/{rid} {
+        allow read: if true;
+        allow create: if signedIn()
+          && notMuted()
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName is string && request.resource.data.authorName.size() <= 24
+          && request.resource.data.text is string
+          && request.resource.data.text.size() >= 1 && request.resource.data.text.size() <= 1000
+          && request.resource.data.createdAt == request.time;
+        allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isMod());
       }
     }
 

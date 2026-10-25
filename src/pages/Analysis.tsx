@@ -8,7 +8,18 @@ import Board from '../components/Board';
 import MoveList from '../components/MoveList';
 import { replay, uciToSan } from '../lib/chessUtil';
 import { getEngine } from '../lib/engine';
-import { openingName } from '../lib/openings';
+import { OPENINGS, openingName } from '../lib/openings';
+import {
+  QUALITY_LABEL,
+  QUALITY_ORDER,
+  bookDepth,
+  keyMoments,
+  moveQualities,
+  neighborMoment,
+  sideSummary,
+  winProb,
+} from '../lib/review';
+import type { Quality } from '../lib/review';
 import type { GameDoc } from '../lib/types';
 
 interface Ev {
@@ -17,35 +28,11 @@ interface Ev {
   best: string | null; // лучший ход в позиции (UCI)
 }
 
-type Quality = 'best' | 'excellent' | 'good' | 'inaccuracy' | 'mistake' | 'blunder';
-
-const QUALITY_LABEL: Record<Quality, string> = {
-  best: 'Лучший ход',
-  excellent: 'Отличный ход',
-  good: 'Хороший ход',
-  inaccuracy: 'Неточность',
-  mistake: 'Ошибка',
-  blunder: 'Грубая ошибка',
-};
-
-function winProb(cp: number): number {
-  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * cp)) - 1);
-}
-
 function fmtEval(e: Ev | undefined): string {
   if (!e) return '…';
   if (e.mate !== null) return `${e.mate > 0 ? '+' : '-'}M${Math.abs(e.mate)}`;
   const v = e.cp / 100;
   return `${v > 0 ? '+' : ''}${v.toFixed(1)}`;
-}
-
-function classify(loss: number, isBest: boolean): Quality {
-  if (isBest || loss <= 0.5) return 'best';
-  if (loss < 2) return 'excellent';
-  if (loss < 6) return 'good';
-  if (loss < 12) return 'inaccuracy';
-  if (loss < 24) return 'mistake';
-  return 'blunder';
 }
 
 function parseInput(text: string): { fens: string[]; moves: Move[]; pgn: string } {
@@ -74,6 +61,9 @@ export default function Analysis() {
   const [sel, setSel] = useState(0);
   const [error, setError] = useState('');
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
+  const [showBest, setShowBest] = useState(false);
+  // режим «исправь ошибку»: игрок ищет лучший ход в позиции перед своей ошибкой
+  const [retry, setRetry] = useState<{ move: number; result: 'pending' | 'wrong' | 'correct' | 'shown' } | null>(null);
   const cancel = useRef(false);
 
   const runAnalysis = useCallback(async (list: string[]) => {
@@ -160,6 +150,11 @@ export default function Analysis() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ушли из позиции перед ошибкой — режим исправления закрывается
+  useEffect(() => {
+    if (retry && sel !== retry.move) setRetry(null);
+  }, [sel]);
+
   // навигация стрелками
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -171,42 +166,23 @@ export default function Analysis() {
     return () => window.removeEventListener('keydown', onKey);
   }, [fens.length]);
 
-  // качество каждого хода
-  const quality = useMemo(() => {
-    const result: { q: Quality; loss: number; acc: number }[] = [];
-    for (let i = 0; i < moves.length; i++) {
-      const before = evals[i];
-      const after = evals[i + 1];
-      if (!before || !after) break;
-      const white = moves[i].color === 'w';
-      const wpBefore = white ? winProb(before.cp) : 100 - winProb(before.cp);
-      const wpAfter = white ? winProb(after.cp) : 100 - winProb(after.cp);
-      const loss = Math.max(0, wpBefore - wpAfter);
-      const uci = moves[i].from + moves[i].to + (moves[i].promotion ?? '');
-      const acc = Math.max(0, Math.min(100, 103.1668 * Math.exp(-0.04354 * loss) - 3.1669));
-      result.push({ q: classify(loss, before.best === uci), loss, acc });
-    }
-    return result;
-  }, [moves, evals]);
+  const ucis = useMemo(() => moves.map((m) => m.from + m.to + (m.promotion ?? '')), [moves]);
+  const colors = useMemo(() => moves.map((m) => m.color), [moves]);
 
-  const opening = useMemo(
-    () => openingName(moves.map((m) => m.from + m.to + (m.promotion ?? ''))),
-    [moves],
+  // качество каждого хода (первые ходы по справочнику дебютов — «дебютные»)
+  const quality = useMemo(
+    () => moveQualities({ colors, ucis, evals, bookPlies: bookDepth(ucis, OPENINGS) }),
+    [colors, ucis, evals],
   );
 
-  const summary = useMemo(() => {
-    const side = (color: 'w' | 'b') => {
-      const idx = moves.map((m, i) => (m.color === color ? i : -1)).filter((i) => i >= 0 && quality[i]);
-      const count = (q: Quality) => idx.filter((i) => quality[i].q === q).length;
-      return {
-        accuracy: idx.length ? idx.reduce((s, i) => s + quality[i].acc, 0) / idx.length : null,
-        inaccuracy: count('inaccuracy'),
-        mistake: count('mistake'),
-        blunder: count('blunder'),
-      };
-    };
-    return { white: side('w'), black: side('b') };
-  }, [moves, quality]);
+  const opening = useMemo(() => openingName(ucis), [ucis]);
+
+  const summary = useMemo(
+    () => ({ white: sideSummary(quality, colors, 'w'), black: sideSummary(quality, colors, 'b') }),
+    [quality, colors],
+  );
+  // ключевые моменты: ошибки и грубые ошибки обеих сторон
+  const moments = useMemo(() => keyMoments(quality), [quality]);
 
   const marks = useMemo(() => {
     const m: Record<number, { label: string; cls: string }> = {};
@@ -224,9 +200,40 @@ export default function Analysis() {
   const barWhite = curEval ? winProb(curEval.cp) : 50;
   const selQuality = sel > 0 ? quality[sel - 1] : undefined;
   const bestSan =
-    sel > 0 && evals[sel - 1]?.best && selQuality && selQuality.q !== 'best'
+    sel > 0 && evals[sel - 1]?.best && selQuality && selQuality.q !== 'best' && selQuality.q !== 'book'
       ? uciToSan(fens[sel - 1], evals[sel - 1].best as string)
       : null;
+
+  // подсказка на доске: лучший ход движка из текущей позиции
+  const hintUci =
+    showBest || (retry && retry.move === sel && (retry.result === 'shown' || retry.result === 'correct'))
+      ? (evals[sel]?.best ?? null)
+      : null;
+  const hintMove = hintUci ? { from: hintUci.slice(0, 2), to: hintUci.slice(2, 4) } : null;
+  const retryColor =
+    retry && retry.move === sel && retry.result !== 'correct' && retry.result !== 'shown' && moves[retry.move]
+      ? moves[retry.move].color === 'w'
+        ? 'white'
+        : 'black'
+      : null;
+
+  /** Перейти к предыдущей / следующей ошибке и показать позицию после неё. */
+  function gotoMoment(dir: 1 | -1) {
+    const m = neighborMoment(moments, sel > 0 ? sel - 1 : -1, dir);
+    if (m) setSel(m.move + 1);
+  }
+
+  function startRetry(moveIdx: number) {
+    setRetry({ move: moveIdx, result: 'pending' });
+    setSel(moveIdx);
+    setOrientation(moves[moveIdx].color === 'w' ? 'white' : 'black');
+  }
+
+  function onRetryMove(from: string, to: string, promotion?: string) {
+    if (!retry) return;
+    const uci = from + to + (promotion ?? '');
+    setRetry({ ...retry, result: uci === evals[retry.move]?.best ? 'correct' : 'wrong' });
+  }
 
   const graph = (() => {
     if (evals.length < 2) return null;
@@ -250,7 +257,14 @@ export default function Analysis() {
               <span>{fmtEval(curEval)}</span>
             </div>
             {fen ? (
-              <Board fen={fen} orientation={orientation} movable={null} lastMove={lastMove} />
+              <Board
+                fen={fen}
+                orientation={orientation}
+                movable={retryColor}
+                lastMove={lastMove}
+                hint={hintMove}
+                onMove={(f, t, p) => onRetryMove(f, t, p)}
+              />
             ) : (
               <div className="board-placeholder">Вставьте партию справа</div>
             )}
@@ -264,6 +278,12 @@ export default function Analysis() {
               <button className="btn small" onClick={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}>🔄</button>
               <button className="btn small" onClick={() => navigator.clipboard?.writeText(fen)}>Копировать FEN</button>
             </div>
+          )}
+          {fen && (
+            <label className="check-row">
+              <input type="checkbox" checked={showBest} onChange={(e) => setShowBest(e.target.checked)} />
+              Показывать лучший ход движка на доске
+            </label>
           )}
         </div>
 
@@ -313,14 +333,14 @@ export default function Analysis() {
                   <div className="muted">Белые</div>
                   <b className="acc">{summary.white.accuracy !== null ? `${summary.white.accuracy.toFixed(1)}%` : '—'}</b>
                   <small>
-                    ?! {summary.white.inaccuracy} · ? {summary.white.mistake} · ?? {summary.white.blunder}
+                    ?! {summary.white.counts.inaccuracy} · ? {summary.white.counts.mistake} · ?? {summary.white.counts.blunder}
                   </small>
                 </div>
                 <div>
                   <div className="muted">Чёрные</div>
                   <b className="acc">{summary.black.accuracy !== null ? `${summary.black.accuracy.toFixed(1)}%` : '—'}</b>
                   <small>
-                    ?! {summary.black.inaccuracy} · ? {summary.black.mistake} · ?? {summary.black.blunder}
+                    ?! {summary.black.counts.inaccuracy} · ? {summary.black.counts.mistake} · ?? {summary.black.counts.blunder}
                   </small>
                 </div>
               </div>
@@ -347,6 +367,62 @@ export default function Analysis() {
                   />
                 </svg>
               )}
+              {quality.length > 0 && (
+                <table className="review-table">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th>Белые</th>
+                      <th>Чёрные</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {QUALITY_ORDER.filter((q) => summary.white.counts[q] + summary.black.counts[q] > 0).map((q) => (
+                      <tr key={q}>
+                        <td className={`q q-${q}`}>{QUALITY_LABEL[q]}</td>
+                        <td>{summary.white.counts[q]}</td>
+                        <td>{summary.black.counts[q]}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {moments.length > 0 && (
+                <div className="row wrap review-moments">
+                  <button className="btn small" onClick={() => gotoMoment(-1)}>◀ Прошлая ошибка</button>
+                  <span className="muted">Ключевых моментов: {moments.length}</span>
+                  <button className="btn small" onClick={() => gotoMoment(1)}>Следующая ошибка ▶</button>
+                </div>
+              )}
+              {retry && moves[retry.move] && (
+                <div className="move-detail retry">
+                  <b>Найдите лучший ход за {moves[retry.move].color === 'w' ? 'белых' : 'чёрных'}</b>
+                  {retry.result === 'wrong' && <div className="error">Это не лучший ход, попробуйте ещё раз.</div>}
+                  {retry.result === 'correct' && <div className="q q-best">Верно! Это ход движка.</div>}
+                  {retry.result === 'shown' && (
+                    <div>
+                      Лучший ход: <b>{uciToSan(fens[retry.move], evals[retry.move]?.best ?? '') ?? '—'}</b>
+                    </div>
+                  )}
+                  <div className="row wrap">
+                    {retry.result !== 'correct' && retry.result !== 'shown' && (
+                      <button className="btn small" onClick={() => setRetry({ ...retry, result: 'shown' })}>
+                        Показать решение
+                      </button>
+                    )}
+                    <button
+                      className="btn small"
+                      onClick={() => {
+                        const idx = retry.move;
+                        setRetry(null);
+                        setSel(idx + 1);
+                      }}
+                    >
+                      Закрыть
+                    </button>
+                  </div>
+                </div>
+              )}
               {sel > 0 && moves[sel - 1] && (
                 <div className="move-detail">
                   <b>
@@ -356,6 +432,11 @@ export default function Analysis() {
                   {selQuality && <span className={`q q-${selQuality.q}`}> — {QUALITY_LABEL[selQuality.q]}</span>}
                   <div className="muted">Оценка: {fmtEval(curEval)}</div>
                   {bestSan && <div>Лучше было: <b>{bestSan}</b></div>}
+                  {selQuality && ['inaccuracy', 'mistake', 'blunder'].includes(selQuality.q) && (
+                    <button className="btn small" onClick={() => startRetry(sel - 1)}>
+                      🧩 Исправить ошибку
+                    </button>
+                  )}
                 </div>
               )}
               <MoveList moves={moves.map((m) => m.san)} current={sel} onSelect={setSel} marks={marks} />

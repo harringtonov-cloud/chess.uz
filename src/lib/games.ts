@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { gameOverInfo, replay } from './chessUtil';
+import { spentMs } from './anticheat';
 import { notify } from './notifications';
 import { rateGame, readStored } from './glicko2';
 import { categoryOf } from './timeControls';
@@ -83,6 +84,8 @@ export async function createGame(
     rematch: null,
     ratingApplied: {},
     ratingDelta: {},
+    times: [],
+    blurs: { white: 0, black: 0 },
     heartbeat: Date.now(),
     createdAt: serverTimestamp(),
   });
@@ -136,6 +139,11 @@ export async function seekGame(profile: Profile, tc: TimeControl): Promise<strin
     }
   }
   return createGame(profile, tc, { private: false });
+}
+
+/** Игрок ушёл со вкладки во время своего хода (сигнал для античита). */
+export function recordBlur(id: string, color: Color) {
+  return updateDoc(doc(db, 'games', id), { [`blurs.${color}`]: increment(1) });
 }
 
 export function heartbeat(id: string) {
@@ -195,6 +203,10 @@ export async function makeMove(
       drawOffer: null,
       takebackOffer: null,
     };
+    // время на ход для античита; у старых партий (где записи уже не совпадают с ходами) не ведём
+    if (g.times && g.times.length === g.moves.length) {
+      update.times = [...g.times, spentMs(g.lastMoveAt ? g.lastMoveAt.toMillis() : null, now)];
+    }
     const over = gameOverInfo(chess);
     if (over) {
       update.status = 'finished';
@@ -320,6 +332,7 @@ export async function acceptTakeback(id: string, uid: string, now: number): Prom
     const c = clocks(g, now);
     tx.update(ref, {
       moves,
+      ...(g.times && g.times.length === g.moves.length ? { times: g.times.slice(0, moves.length) } : {}),
       fen: chess.fen(),
       lastMove: last ? { from: last.from, to: last.to } : null,
       whiteTime: g.daily ? g.base * 1000 : c.white,
@@ -371,6 +384,8 @@ export async function requestRematch(id: string, uid: string): Promise<string | 
         rematch: null,
         ratingApplied: {},
         ratingDelta: {},
+        times: [],
+        blurs: { white: 0, black: 0 },
         heartbeat: Date.now(),
         createdAt: serverTimestamp(),
       });

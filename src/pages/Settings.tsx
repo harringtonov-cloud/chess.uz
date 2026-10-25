@@ -55,6 +55,40 @@ export default function SettingsPage() {
           />
           Подсвечивать последний ход и выбранную фигуру
         </label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={s.legalMoves}
+            onChange={(e) => updateSettings({ legalMoves: e.target.checked })}
+          />
+          Показывать точки возможных ходов
+        </label>
+
+        <h4>Ходы</h4>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={s.autoQueen}
+            onChange={(e) => updateSettings({ autoQueen: e.target.checked })}
+          />
+          Автоматически превращать пешку в ферзя
+        </label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={s.premoves}
+            onChange={(e) => updateSettings({ premoves: e.target.checked })}
+          />
+          Премувы: задавать ход заранее, пока думает соперник (в живых партиях)
+        </label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={s.confirmMove}
+            onChange={(e) => updateSettings({ confirmMove: e.target.checked })}
+          />
+          Подтверждать каждый ход (в живых партиях)
+        </label>
         <p className="muted">Настройки сохраняются в этом браузере.</p>
       </section>
 

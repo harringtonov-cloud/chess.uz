@@ -233,6 +233,13 @@ textarea { min-height: 70px; resize: vertical; }
 .arrow-head { fill: rgba(255, 170, 0, 0.85); }
 .sq.mark { box-shadow: inset 0 0 0 100px rgba(235, 90, 70, 0.55); }
 
+/* Премувы и подтверждение хода */
+.sq.premove { box-shadow: inset 0 0 0 100px rgba(40, 110, 220, 0.5); }
+.sq.confirm { box-shadow: inset 0 0 0 100px rgba(80, 200, 120, 0.45); }
+.dot.pre { background: rgba(40, 110, 220, 0.45); }
+.dot.capture.pre { background: transparent; border-color: rgba(40, 110, 220, 0.55); }
+.move-confirm { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); z-index: 6; display: flex; align-items: center; gap: 8px; background: var(--panel); padding: 6px 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); }
+
 /* Ежедневные партии */
 .my-turn { background: rgba(129, 182, 76, 0.12); }
 .accent { color: var(--accent); }
@@ -279,3 +286,30 @@ textarea { min-height: 70px; resize: vertical; }
 .bar-label { width: 280px; max-width: 45%; font-size: 14px; }
 .bar-track { flex: 1; height: 10px; background: var(--panel-2); border-radius: 5px; overflow: hidden; }
 .bar-fill { display: block; height: 100%; background: var(--accent); }
+
+/* Тренировка дебютов */
+.trainer-stats { margin-top: 12px; gap: 16px; }
+/* Обзор партии */
+.review-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+.review-table th { text-align: right; font-weight: 600; color: var(--muted); padding: 2px 6px; }
+.review-table td { text-align: right; padding: 2px 6px; }
+.review-table td:first-child, .review-table th:first-child { text-align: left; }
+.review-moments { justify-content: space-between; align-items: center; margin: 6px 0; }
+.q-book { color: #9aa7b8; }
+.move-detail.retry { border-left: 3px solid var(--accent); padding-left: 10px; }
+/* Арена-турниры */
+.arena-timer { font-size: 22px; margin: 8px 0; }
+.table tr.me td { background: rgba(255, 235, 59, 0.08); }
+/* Форум */
+.forum-text { white-space: pre-wrap; overflow-wrap: anywhere; margin: 6px 0; }
+.forum-reply { border-top: 1px solid var(--panel-2); padding: 8px 0; }
+
+/* Античит */
+.anticheat-report { border-top: 1px solid var(--panel-2); margin-top: 14px; padding-top: 8px; }
+.anticheat-sides { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.anticheat-side { border: 1px solid var(--panel-2); border-radius: 8px; padding: 10px; }
+.anticheat-score { font-size: 18px; margin: 4px 0 8px; }
+.anticheat-reasons { margin: 8px 0; padding-left: 18px; }
+.anticheat-side.level-watch { border-color: #f0c040; }
+.anticheat-side.level-suspicious { border-color: #f08a30; }
+.anticheat-side.level-high { border-color: var(--danger); }

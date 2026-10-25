@@ -18,6 +18,8 @@ import {
 import { fetchPlayerGames } from '../lib/playerGames';
 import { ratingView } from '../lib/glicko2';
 import ProfileExtras from '../components/ProfileExtras';
+import { downloadText } from '../lib/download';
+import { gamesPgn } from '../lib/gamePgn';
 import ReportButton from '../components/ReportButton';
 import { useModeration } from '../ModerationContext';
 import type { GameDoc, Profile as ProfileDoc } from '../lib/types';
@@ -204,7 +206,22 @@ export default function Profile() {
       <ProfileExtras profile={shown} games={games} />
 
       <div className="card">
-        <h3>Последние партии</h3>
+        <div className="row spread">
+          <h3>Последние партии</h3>
+          {games.filter(({ g }) => g.moves.length > 0 && g.status !== 'waiting').length > 0 && (
+            <button
+              className="btn small"
+              onClick={() =>
+                downloadText(
+                  `chess-uz_${shown.name.replace(/[^A-Za-z0-9]+/g, '-') || 'player'}_games.pgn`,
+                  gamesPgn(games.filter(({ g }) => g.moves.length > 0 && g.status !== 'waiting')),
+                )
+              }
+            >
+              ⬇ Скачать все (PGN)
+            </button>
+          )}
+        </div>
         {gamesError && (
           <p className="error">
             {gamesError.includes('index')
