@@ -1,5 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
 import Navbar from './components/Navbar';
+import AchievementSync from './components/AchievementSync';
 import SiteBanners from './components/SiteBanners';
 import { ModerationProvider } from './ModerationContext';
 import { NotificationsProvider } from './NotificationsContext';
@@ -36,6 +37,7 @@ export default function App() {
       <ModerationProvider>
       <Navbar />
       <SiteBanners />
+      <AchievementSync />
       <main className="container">
         <Routes>
           <Route path="/" element={<Home />} />

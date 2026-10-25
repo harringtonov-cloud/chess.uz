@@ -8,6 +8,7 @@ import Board from '../components/Board';
 import { uciToMove } from '../lib/chessUtil';
 import { FALLBACK, fetchPuzzle } from '../lib/puzzleApi';
 import type { Puzzle } from '../lib/puzzleApi';
+import { afterPuzzle, normalizeProgress } from '../lib/achievements';
 import { expectedScore } from '../lib/elo';
 import { THEME_CHOICES, pickFallback, sanitizeTheme, themeLabel } from '../lib/puzzleThemes';
 import { playSound } from '../lib/sound';
@@ -91,7 +92,10 @@ export default function Puzzles() {
     const d = Math.round(32 * ((success ? 1 : 0) - expectedScore(own, puzzle.rating)));
     setDelta(d);
     try {
-      await updateDoc(doc(db, 'users', user.uid), { 'ratings.puzzle': own + d });
+      await updateDoc(doc(db, 'users', user.uid), {
+        'ratings.puzzle': own + d,
+        progress: afterPuzzle(normalizeProgress(profile.progress), success, Date.now(), -new Date().getTimezoneOffset()),
+      });
     } catch (e) {
       console.error(e);
     }

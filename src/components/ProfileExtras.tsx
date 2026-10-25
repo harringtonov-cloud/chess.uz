@@ -1,4 +1,14 @@
 import { useMemo, useState } from 'react';
+import {
+  CATALOG,
+  familyViews,
+  isEarned,
+  liveDayStreak,
+  metricsOf,
+  normalizeEarned,
+  normalizeProgress,
+  recentlyEarned,
+} from '../lib/achievements';
 import { CATEGORY_LABEL } from '../lib/timeControls';
 import type { Category, GameDoc, Profile } from '../lib/types';
 
@@ -18,34 +28,6 @@ function outcomeFor(g: GameDoc, uid: string): { color: 'white' | 'black'; outcom
   if (g.result === '1/2-1/2') return { color, outcome: 'draw' };
   const whiteWon = g.result === '1-0';
   return { color, outcome: whiteWon === (color === 'white') ? 'win' : 'loss' };
-}
-
-interface Badge {
-  id: string;
-  icon: string;
-  title: string;
-  hint: string;
-  earned: boolean;
-}
-
-function badgesFor(p: Profile): Badge[] {
-  const games = p.stats?.games ?? 0;
-  const wins = p.stats?.wins ?? 0;
-  const top = Math.max(p.ratings?.bullet ?? 0, p.ratings?.blitz ?? 0, p.ratings?.rapid ?? 0, p.ratings?.classical ?? 0);
-  const puzzle = p.ratings?.puzzle ?? 0;
-  return [
-    { id: 'first', icon: '♟', title: 'Первая партия', hint: 'Сыграть одну рейтинговую партию', earned: games >= 1 },
-    { id: 'win1', icon: '🏅', title: 'Первая победа', hint: 'Выиграть рейтинговую партию', earned: wins >= 1 },
-    { id: 'g10', icon: '🔟', title: '10 партий', hint: 'Сыграть 10 рейтинговых партий', earned: games >= 10 },
-    { id: 'g50', icon: '🎖', title: '50 партий', hint: 'Сыграть 50 рейтинговых партий', earned: games >= 50 },
-    { id: 'w10', icon: '🔥', title: '10 побед', hint: 'Выиграть 10 партий', earned: wins >= 10 },
-    { id: 'r1400', icon: '📈', title: 'Рейтинг 1400', hint: 'Достичь 1400 в любом контроле', earned: top >= 1400 },
-    { id: 'r1600', icon: '🚀', title: 'Рейтинг 1600', hint: 'Достичь 1600 в любом контроле', earned: top >= 1600 },
-    { id: 'r1800', icon: '👑', title: 'Рейтинг 1800', hint: 'Достичь 1800 в любом контроле', earned: top >= 1800 },
-    { id: 'r2000', icon: '💎', title: 'Рейтинг 2000', hint: 'Достичь 2000 в любом контроле', earned: top >= 2000 },
-    { id: 'p1400', icon: '🧩', title: 'Решатель задач', hint: 'Рейтинг задач 1400', earned: puzzle >= 1400 },
-    { id: 'p1800', icon: '🧠', title: 'Мастер тактики', hint: 'Рейтинг задач 1800', earned: puzzle >= 1800 },
-  ];
 }
 
 export default function ProfileExtras({ profile, games }: Props) {
@@ -81,8 +63,6 @@ export default function ProfileExtras({ profile, games }: Props) {
   const total = (x: { win: number; draw: number; loss: number }) => x.win + x.draw + x.loss;
   const all = total(stats.white) + total(stats.black);
   const wins = stats.white.win + stats.black.win;
-  const badges = badgesFor(profile);
-  const earned = badges.filter((b) => b.earned).length;
 
   const chart = (() => {
     if (series.length < 2) return null;
@@ -158,19 +138,88 @@ export default function ProfileExtras({ profile, games }: Props) {
         )}
       </div>
 
-      <div className="card">
-        <h3>
-          Достижения <span className="muted">{earned} из {badges.length}</span>
-        </h3>
-        <div className="badges">
-          {badges.map((b) => (
-            <div key={b.id} className={`badge-item ${b.earned ? 'earned' : ''}`} title={b.hint}>
-              <span className="badge-icon">{b.icon}</span>
-              <span>{b.title}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <AchievementsCard profile={profile} />
     </>
+  );
+}
+
+function formatDate(ms: number): string {
+  const d = new Date(ms);
+  return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}`;
+}
+
+/** Серии, счётчики и достижения по уровням с прогрессом до следующего. */
+function AchievementsCard({ profile }: { profile: Profile }) {
+  const now = Date.now();
+  const offset = -new Date().getTimezoneOffset();
+  const m = metricsOf(profile);
+  const progress = normalizeProgress(profile.progress);
+  const have = normalizeEarned(profile.achievements);
+  const views = familyViews(m);
+  const earnedCount = CATALOG.filter((a) => isEarned(a, m)).length;
+  const fresh = new Set(recentlyEarned(have, now));
+  const days = liveDayStreak(progress, now, offset);
+
+  const tiles: [string, string, string][] = [
+    ['🔥', String(progress.winStreak), `серия побед (рекорд ${progress.bestWinStreak})`],
+    ['📅', String(days), `дней подряд (рекорд ${progress.bestDayStreak})`],
+    ['🧩', String(progress.puzzlesSolved), 'задач решено'],
+    ['⚔️', String(progress.upsets), 'побед над сильнейшими'],
+  ];
+
+  return (
+    <div className="card">
+      <h3>
+        Достижения{' '}
+        <span className="muted">
+          {earnedCount} из {CATALOG.length}
+        </span>
+      </h3>
+      <div className="streak-tiles">
+        {tiles.map(([icon, value, label]) => (
+          <div key={label} className="rating-box">
+            <span className="muted">
+              {icon} {label}
+            </span>
+            <b>{value}</b>
+          </div>
+        ))}
+      </div>
+      <div className="ach-list">
+        {views.map((v) => (
+          <div key={v.family.metric} className="ach-row">
+            <div className="ach-head">
+              <span>
+                {v.family.icon} <b>{v.family.name}</b>
+              </span>
+              <span className="muted">
+                {v.done}/{v.total}
+                {v.next !== null && ` · ${v.value} из ${v.next}`}
+              </span>
+            </div>
+            <div className="ach-tiers">
+              {CATALOG.filter((a) => a.metric === v.family.metric).map((a) => {
+                const got = isEarned(a, m);
+                const at = have[a.id];
+                return (
+                  <span
+                    key={a.id}
+                    className={`ach-tier${got ? ' earned' : ''}${fresh.has(a.id) ? ' fresh' : ''}`}
+                    title={`${a.hint}${got && at ? ` — получено ${formatDate(at)}` : ''}`}
+                  >
+                    {a.threshold}
+                  </span>
+                );
+              })}
+            </div>
+            {v.next !== null && (
+              <div className="bar-track">
+                <span className="bar-fill" style={{ width: `${Math.round(v.progress * 100)}%` }} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -313,3 +313,14 @@ textarea { min-height: 70px; resize: vertical; }
 .anticheat-side.level-watch { border-color: #f0c040; }
 .anticheat-side.level-suspicious { border-color: #f08a30; }
 .anticheat-side.level-high { border-color: var(--danger); }
+
+/* достижения и серии */
+.achievement-toast { position: fixed; right: 16px; bottom: 16px; z-index: 50; background: var(--panel); border: 1px solid var(--accent); border-radius: 12px; padding: 12px 16px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5); cursor: pointer; max-width: 300px; display: flex; flex-direction: column; gap: 4px; }
+.streak-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.ach-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.ach-row { background: var(--panel-2); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.ach-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ach-tiers { display: flex; flex-wrap: wrap; gap: 4px; }
+.ach-tier { min-width: 34px; text-align: center; padding: 2px 8px; border-radius: 999px; background: #1a1917; color: var(--muted); font-size: 13px; font-weight: 700; }
+.ach-tier.earned { background: var(--accent); color: #14210a; }
+.ach-tier.fresh { outline: 2px solid #f5c542; }

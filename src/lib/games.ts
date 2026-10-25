@@ -17,6 +17,7 @@ import { db } from '../firebase';
 import { gameOverInfo, replay } from './chessUtil';
 import { spentMs } from './anticheat';
 import { notify } from './notifications';
+import { afterGame, normalizeProgress } from './achievements';
 import { rateGame, readStored } from './glicko2';
 import { categoryOf } from './timeControls';
 import type { TimeControl } from './timeControls';
@@ -434,8 +435,15 @@ export async function applyRating(gameId: string, uid: string): Promise<void> {
       Date.now(),
     );
     const delta = res.delta;
+    const progress = afterGame(
+      normalizeProgress(u.progress),
+      { score, ownRating: own, oppRating: opp },
+      Date.now(),
+      -new Date().getTimezoneOffset(),
+    );
     const field = score === 1 ? 'wins' : score === 0 ? 'losses' : 'draws';
     tx.update(uRef, {
+      progress,
       [`ratings.${g.category}`]: res.rating,
       [`glicko.${g.category}`]: res.stored,
       'stats.games': increment(1),

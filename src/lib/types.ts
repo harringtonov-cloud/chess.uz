@@ -27,6 +27,10 @@ export interface Profile {
   ratings: Ratings;
   stats: Stats;
   glicko?: GlickoMap;
+  /** Счётчики серий и задач (см. lib/achievements.ts). */
+  progress?: Partial<Record<string, unknown>>;
+  /** Полученные достижения: id → время получения, мс. */
+  achievements?: Record<string, number>;
 }
 
 export interface GameDoc {

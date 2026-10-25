@@ -60,6 +60,8 @@ function normalizeProfile(data: Partial<Profile>, user: User): Profile {
     ratings: { ...base.ratings, ...(data.ratings ?? {}) },
     stats: { ...base.stats, ...(data.stats ?? {}) },
     glicko: data.glicko && typeof data.glicko === 'object' ? data.glicko : undefined,
+    progress: data.progress && typeof data.progress === 'object' ? data.progress : undefined,
+    achievements: data.achievements && typeof data.achievements === 'object' ? data.achievements : undefined,
   };
 }
 
